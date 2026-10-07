@@ -1,4 +1,3 @@
-
 Default to using Bun instead of Node.js.
 
 - Use `bun <file>` instead of `node <file>` or `ts-node <file>`
@@ -30,3 +29,13 @@ test("hello world", () => {
   expect(1).toBe(1);
 });
 ```
+
+## Linting and Formatting, Checks
+
+- `bun run lint` for lint and fix
+- `bun run lint:check` for lint check
+- `bun run format` for format and fix
+- `bun run format:check` for format check
+- `bun run types:check` for type check
+- `bun run check` for complete check
+- `bun run fix` for complete fix

@@ -1,10 +1,21 @@
 {
   "name": "backend",
-  "module": "index.ts",
-  "type": "module",
   "private": true,
+  "type": "module",
+  "module": "index.ts",
+  "scripts": {
+    "lint": "oxlint --fix",
+    "lint:check": "oxlint",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "types:check": "tsc",
+    "fix": "bun run lint && bun run format",
+    "check": "bun run lint:check && bun run format:check"
+  },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "oxfmt": "^0.72.0",
+    "oxlint": "^1.87.0"
   },
   "peerDependencies": {
     "typescript": "^7"
