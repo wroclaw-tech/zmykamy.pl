@@ -4,6 +4,7 @@
   "type": "module",
   "module": "index.ts",
   "scripts": {
+    "dev": "bun run --hot src/index.ts",
     "lint": "oxlint --fix",
     "lint:check": "oxlint",
     "format": "oxfmt",
@@ -11,6 +12,9 @@
     "types:check": "tsc",
     "fix": "bun run lint && bun run format",
     "check": "bun run lint:check && bun run format:check"
+  },
+  "dependencies": {
+    "hono": "^4.13.13"
   },
   "devDependencies": {
     "@types/bun": "latest",
