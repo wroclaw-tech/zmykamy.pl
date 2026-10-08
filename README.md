@@ -1,0 +1,1 @@
+# zmykamy.pl
