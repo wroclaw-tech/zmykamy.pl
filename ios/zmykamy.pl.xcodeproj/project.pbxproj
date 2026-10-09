@@ -6,8 +6,27 @@
 	objectVersion = 110;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		11B0767530782DF100E0C1BC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 11D0AD923079179A0006D8AC /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 11D0AD993079179A0006D8AC;
+			remoteInfo = zmykamy.pl;
+		};
+		11B0767F30782DF100E0C1BC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 11D0AD923079179A0006D8AC /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 11D0AD993079179A0006D8AC;
+			remoteInfo = zmykamy.pl;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		11D0AD9A3079179A0006D8AC /* zmykamy.pl.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = zmykamy.pl.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		11B0767430782DF100E0C1BC /* zmykamy.plTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = zmykamy.plTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		11B0767E30782DF100E0C1BC /* zmykamy.plUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = zmykamy.plUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -16,10 +35,30 @@
 			path = zmykamy.pl;
 			sourceTree = "<group>";
 		};
+		11B0767730782DF100E0C1BC /* zmykamy.plTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = zmykamy.plTests;
+			sourceTree = "<group>";
+		};
+		11B0768130782DF100E0C1BC /* zmykamy.plUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = zmykamy.plUITests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		11D0AD973079179A0006D8AC /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
+		11B0767130782DF100E0C1BC /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
+		11B0767B30782DF100E0C1BC /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
 			);
@@ -31,6 +70,8 @@
 			isa = PBXGroup;
 			children = (
 				11D0AD9C3079179A0006D8AC /* zmykamy.pl */,
+				11B0767730782DF100E0C1BC /* zmykamy.plTests */,
+				11B0768130782DF100E0C1BC /* zmykamy.plUITests */,
 				11D0AD9B3079179A0006D8AC /* Products */,
 			);
 			sourceTree = "<group>";
@@ -39,6 +80,8 @@
 			isa = PBXGroup;
 			children = (
 				11D0AD9A3079179A0006D8AC /* zmykamy.pl.app */,
+				11B0767430782DF100E0C1BC /* zmykamy.plTests.xctest */,
+				11B0767E30782DF100E0C1BC /* zmykamy.plUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -64,6 +107,48 @@
 			productReference = 11D0AD9A3079179A0006D8AC /* zmykamy.pl.app */;
 			productType = "com.apple.product-type.application";
 		};
+		11B0767330782DF100E0C1BC /* zmykamy.plTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 11B0768B30782DF100E0C1BC /* Build configuration list for PBXNativeTarget "zmykamy.plTests" */;
+			buildPhases = (
+				11B0767030782DF100E0C1BC /* Sources */,
+				11B0767130782DF100E0C1BC /* Frameworks */,
+				11B0767230782DF100E0C1BC /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				11B0767630782DF100E0C1BC /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				11B0767730782DF100E0C1BC /* zmykamy.plTests */,
+			);
+			name = zmykamy.plTests;
+			productName = zmykamy.plTests;
+			productReference = 11B0767430782DF100E0C1BC /* zmykamy.plTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		11B0767D30782DF100E0C1BC /* zmykamy.plUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 11B0768E30782DF100E0C1BC /* Build configuration list for PBXNativeTarget "zmykamy.plUITests" */;
+			buildPhases = (
+				11B0767A30782DF100E0C1BC /* Sources */,
+				11B0767B30782DF100E0C1BC /* Frameworks */,
+				11B0767C30782DF100E0C1BC /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				11B0768030782DF100E0C1BC /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				11B0768130782DF100E0C1BC /* zmykamy.plUITests */,
+			);
+			name = zmykamy.plUITests;
+			productName = zmykamy.plUITests;
+			productReference = 11B0767E30782DF100E0C1BC /* zmykamy.plUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -76,6 +161,14 @@
 				TargetAttributes = {
 					11D0AD993079179A0006D8AC = {
 						CreatedOnToolsVersion = 27.0;
+					};
+					11B0767330782DF100E0C1BC = {
+						CreatedOnToolsVersion = 27.0;
+						TestTargetID = 11D0AD993079179A0006D8AC;
+					};
+					11B0767D30782DF100E0C1BC = {
+						CreatedOnToolsVersion = 27.0;
+						TestTargetID = 11D0AD993079179A0006D8AC;
 					};
 				};
 			};
@@ -94,12 +187,24 @@
 			projectRoot = "";
 			targets = (
 				11D0AD993079179A0006D8AC /* zmykamy.pl */,
+				11B0767330782DF100E0C1BC /* zmykamy.plTests */,
+				11B0767D30782DF100E0C1BC /* zmykamy.plUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		11D0AD983079179A0006D8AC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
+		11B0767230782DF100E0C1BC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
+		11B0767C30782DF100E0C1BC /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			files = (
 			);
@@ -112,7 +217,30 @@
 			files = (
 			);
 		};
+		11B0767030782DF100E0C1BC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
+		11B0767A30782DF100E0C1BC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		11B0767630782DF100E0C1BC /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 11D0AD993079179A0006D8AC /* zmykamy.pl */;
+			targetProxy = 11B0767530782DF100E0C1BC /* PBXContainerItemProxy */;
+		};
+		11B0768030782DF100E0C1BC /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 11D0AD993079179A0006D8AC /* zmykamy.pl */;
+			targetProxy = 11B0767F30782DF100E0C1BC /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		11D0ADA33079179C0006D8AC /* Debug configuration for PBXProject "zmykamy.pl" */ = {
@@ -304,6 +432,88 @@
 			};
 			name = Release;
 		};
+		11B0768C30782DF100E0C1BC /* Debug configuration for PBXNativeTarget "zmykamy.plTests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.6;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = pl.zmykamy.appTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/zmykamy.pl.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/zmykamy.pl";
+			};
+			name = Debug;
+		};
+		11B0768D30782DF100E0C1BC /* Release configuration for PBXNativeTarget "zmykamy.plTests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.6;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = pl.zmykamy.appTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/zmykamy.pl.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/zmykamy.pl";
+			};
+			name = Release;
+		};
+		11B0768F30782DF100E0C1BC /* Debug configuration for PBXNativeTarget "zmykamy.plUITests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.6;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = pl.zmykamy.appUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = zmykamy.pl;
+			};
+			name = Debug;
+		};
+		11B0769030782DF100E0C1BC /* Release configuration for PBXNativeTarget "zmykamy.plUITests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.6;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = pl.zmykamy.appUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = zmykamy.pl;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -320,6 +530,22 @@
 			buildConfigurations = (
 				11D0ADA63079179C0006D8AC /* Debug configuration for PBXNativeTarget "zmykamy.pl" */,
 				11D0ADA73079179C0006D8AC /* Release configuration for PBXNativeTarget "zmykamy.pl" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		11B0768B30782DF100E0C1BC /* Build configuration list for PBXNativeTarget "zmykamy.plTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				11B0768C30782DF100E0C1BC /* Debug configuration for PBXNativeTarget "zmykamy.plTests" */,
+				11B0768D30782DF100E0C1BC /* Release configuration for PBXNativeTarget "zmykamy.plTests" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		11B0768E30782DF100E0C1BC /* Build configuration list for PBXNativeTarget "zmykamy.plUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				11B0768F30782DF100E0C1BC /* Debug configuration for PBXNativeTarget "zmykamy.plUITests" */,
+				11B0769030782DF100E0C1BC /* Release configuration for PBXNativeTarget "zmykamy.plUITests" */,
 			);
 			defaultConfigurationName = Release;
 		};
