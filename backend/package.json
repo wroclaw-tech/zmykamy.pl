@@ -5,6 +5,14 @@
   "module": "index.ts",
   "scripts": {
     "dev": "bun run --hot src/index.ts",
+    "start": "bun run src/index.ts",
+    "build": "bun build src/index.ts --target bun --outdir dist",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio",
+    "auth:generate": "bunx --bun auth generate --config src/lib/auth.ts --output src/db/schema/auth.ts -y",
     "lint": "oxlint --fix",
     "lint:check": "oxlint",
     "format": "oxfmt",
@@ -14,14 +22,19 @@
     "check": "bun run lint:check && bun run format:check"
   },
   "dependencies": {
+    "better-auth": "^1.7.7",
+    "drizzle-orm": "^0.45.4",
     "hono": "^4.13.13"
   },
   "devDependencies": {
     "@types/bun": "latest",
+    "auth": "^1.7.7",
+    "drizzle-kit": "^0.31.11",
     "oxfmt": "^0.72.0",
     "oxlint": "^1.87.0"
   },
   "peerDependencies": {
     "typescript": "^7"
-  }
+  },
+  "packageManager": "bun@1.4.2"
 }
