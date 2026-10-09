@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "bun run --hot src/index.ts",
     "start": "bun run src/index.ts",
+    "build": "bun build src/index.ts --target bun --outdir dist",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "db:generate": "drizzle-kit generate",
@@ -34,5 +35,6 @@
   },
   "peerDependencies": {
     "typescript": "^7"
-  }
+  },
+  "packageManager": "bun@1.4.2"
 }
