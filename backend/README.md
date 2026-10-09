@@ -1,15 +1,31 @@
 # backend
 
-To install dependencies:
+Hono + Better Auth + Drizzle on Bun, backed by Postgres.
+
+## Setup
 
 ```bash
 bun install
+cp .env.example .env
+bun run db:up
+bun run db:migrate
+bun run dev
 ```
 
-To run:
+The API listens on `http://localhost:3000` locally and on `https://api.zmykamy.pl` in production. `BETTER_AUTH_URL` must match the public URL of the environment.
 
-```bash
-bun run index.ts
-```
+If port `5432` is taken, set `POSTGRES_PORT` in `.env` and update the port in `DATABASE_URL`.
 
-This project was created using `bun init` in bun v1.4.2. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
+## Endpoints
+
+- `GET /` — health check, returns `ok`
+- `/auth/*` — Better Auth (e.g. `POST /auth/sign-up/email`, `POST /auth/sign-in/email`, `GET /auth/get-session`)
+
+Mobile clients authenticate with the `Authorization: Bearer <token>` header, using the token from the `set-auth-token` response header.
+
+## Database
+
+- `bun run db:generate` — generate a migration from schema changes
+- `bun run db:migrate` — apply migrations
+- `bun run db:studio` — open Drizzle Studio
+- `bun run auth:generate` — regenerate the Better Auth schema after changing auth config or plugins
