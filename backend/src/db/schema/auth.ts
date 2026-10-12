@@ -7,6 +7,11 @@ export const user = pgTable("user", {
   email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified").default(false).notNull(),
   image: text("image"),
+  themePalette: text("theme_palette", {
+    enum: ["ocean", "beach", "cities", "mountains", "tropics", "festivals"],
+  }),
+  termsVersion: text("terms_version"),
+  termsAcceptedAt: timestamp("terms_accepted_at"),
   createdAt: timestamp("created_at").notNull(),
   updatedAt: timestamp("updated_at")
     .$onUpdate(() => new Date())

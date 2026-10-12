@@ -10,7 +10,7 @@
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
+    "db:migrate": "bun run src/db/migrate.ts",
     "db:studio": "drizzle-kit studio",
     "auth:generate": "bunx --bun auth generate --config src/lib/auth.ts --output src/db/schema/auth.ts -y",
     "lint": "oxlint --fix",
@@ -19,12 +19,14 @@
     "format:check": "oxfmt --check",
     "types:check": "tsc",
     "fix": "bun run lint && bun run format",
-    "check": "bun run lint:check && bun run format:check"
+    "check": "bun run lint:check && bun run format:check && bun run types:check"
   },
   "dependencies": {
+    "@hono/zod-validator": "^0.9.1",
     "better-auth": "^1.7.7",
     "drizzle-orm": "^0.45.4",
-    "hono": "^4.13.13"
+    "hono": "^4.13.13",
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@types/bun": "latest",
