@@ -6,7 +6,7 @@ const getSerializableContext = (context: LogContext) =>
     Object.entries(context).map(([key, value]) => [
       key,
       value instanceof Error
-        ? { name: value.name, message: value.message, stack: value.stack }
+        ? { name: value.name, message: value.message, stack: value.stack, cause: value.cause }
         : value,
     ]),
   );

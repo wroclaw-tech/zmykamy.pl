@@ -19,7 +19,7 @@
     "format:check": "oxfmt --check",
     "types:check": "tsc",
     "fix": "bun run lint && bun run format",
-    "check": "bun run lint:check && bun run format:check"
+    "check": "bun run lint:check && bun run format:check && bun run types:check"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.9.1",

@@ -20,13 +20,6 @@ body:json {
   }
 }
 
-vars:pre-request {
-  name: test
-  email: test@gmail.com
-  password: testtest
-  baseUrl: http://localhost:3000
-}
-
 script:post-response {
   if (res.body?.token) {
     bru.setVar("token", res.body.token);
