@@ -20,8 +20,15 @@ If port `5432` is taken, set `POSTGRES_PORT` in `.env` and update the port in `D
 
 - `GET /` — health check, returns `ok`
 - `/auth/*` — Better Auth (e.g. `POST /auth/sign-up/email`, `POST /auth/sign-in/email`, `GET /auth/get-session`)
+- `GET /profile` — the signed-in user
 
 Mobile clients authenticate with the `Authorization: Bearer <token>` header, using the token from the `set-auth-token` response header.
+
+Errors are returned as `{ "error": { "code", "message" } }`; validation errors also carry `issues`.
+
+## Manual testing
+
+Open `bruno/` as a collection in [Bruno](https://www.usebruno.com) and select the `local` environment. Run `auth/Sign up` or `auth/Sign in` first — it stores the bearer token used by every other request.
 
 ## Database
 
