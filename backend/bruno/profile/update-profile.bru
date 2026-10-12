@@ -1,0 +1,25 @@
+meta {
+  name: Update profile
+  type: http
+  seq: 2
+}
+
+patch {
+  url: {{baseUrl}}/profile
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "name": "Kuba",
+    "themePalette": "ocean"
+  }
+}
+
+docs {
+  All fields are optional, at least one is required.
+
+  - `themePalette`: ocean, beach, cities, mountains, tropics, festivals (or null)
+  - `termsVersion`: records a new terms acceptance and stamps `termsAcceptedAt`
+}

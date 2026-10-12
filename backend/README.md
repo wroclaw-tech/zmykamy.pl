@@ -21,6 +21,9 @@ If port `5432` is taken, set `POSTGRES_PORT` in `.env` and update the port in `D
 - `GET /` — health check, returns `ok`
 - `/auth/*` — Better Auth (e.g. `POST /auth/sign-up/email`, `POST /auth/sign-in/email`, `GET /auth/get-session`)
 - `GET /profile` — the signed-in user
+- `PATCH /profile` — update `name`, `themePalette` (`ocean`, `beach`, `cities`, `mountains`, `tropics`, `festivals`) or `termsVersion`
+
+`POST /auth/sign-up/email` also accepts `themePalette` and `termsVersion`; sending `termsVersion` records `termsAcceptedAt`.
 
 Mobile clients authenticate with the `Authorization: Bearer <token>` header, using the token from the `set-auth-token` response header.
 
