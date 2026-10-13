@@ -1,16 +1,16 @@
 info:
-  name: Update profile
+  name: Update user
   type: http
-  seq: 2
+  seq: 4
 
 http:
-  method: PATCH
-  url: "{{baseUrl}}/profile"
+  method: POST
+  url: "{{baseUrl}}/auth/update-user"
   body:
     type: json
     data: |-
       {
-        "name": "Kuba",
+        "name": "Test",
         "themePalette": "ocean"
       }
   auth: inherit
@@ -20,7 +20,6 @@ settings:
   timeout: 0
   followRedirects: true
   maxRedirects: 5
-  forwardAuthorizationHeader: true
 
 docs: |-
   All fields are optional, at least one is required.

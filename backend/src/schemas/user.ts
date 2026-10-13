@@ -9,5 +9,6 @@ export const THEME_PALETTES = [
   "festivals",
 ] as const;
 
+export const userNameSchema = z.string().trim().min(1).max(60);
 export const themePaletteSchema = z.enum(THEME_PALETTES);
 export const termsVersionSchema = z.string().trim().min(1).max(32);

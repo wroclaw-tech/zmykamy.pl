@@ -20,18 +20,15 @@ If port `5432` is taken, set `POSTGRES_PORT` in `.env` and update the port in `D
 
 Mobile clients authenticate with the `Authorization: Bearer <token>` header, using the token from the `set-auth-token` response header.
 
-Errors are returned as `{ "error": { "code", "message" } }`; validation errors also carry `issues`.
+Errors are returned as `{ "error": { "code", "message" } }`; Better Auth endpoints under `/auth/*` return `{ "code", "message" }`.
 
 - `GET /` — health check, returns `ok`
 
-### Auth
+### Auth & user data
 
-- `/auth/*` — Better Auth (e.g. `POST /auth/sign-up/email`, `POST /auth/sign-in/email`, `GET /auth/get-session`)
-
-### Profile
-
-- `GET /profile` — the signed-in user
-- `PATCH /profile` — update `name`, `themePalette` (`ocean`, `beach`, `cities`, `mountains`, `tropics`, `festivals`) or `termsVersion`
+- `/auth/*` — Better Auth (e.g. `POST /auth/sign-up/email`, `POST /auth/sign-in/email`)
+- `GET /auth/get-session` — the signed-in user and session
+- `POST /auth/update-user` — update `name`, `themePalette` (`ocean`, `beach`, `cities`, `mountains`, `tropics`, `festivals` or `null`) or `termsVersion` (stamps `termsAcceptedAt`); returns `{ "status": true }`
 
 ## Manual testing
 

@@ -5,9 +5,16 @@ info:
   version: "1"
 
 request:
-  auth:
-    type: bearer
-    token: "{{token}}"
+  headers:
+    - name: Origin
+      value: "{{baseUrl}}"
+  scripts:
+    - type: before-request
+      code: |-
+        const token = bru.getVar("token");
+        if (token) {
+          req.setHeader("Authorization", `Bearer ${token}`);
+        }
 bundled: false
 extensions:
   bruno:
