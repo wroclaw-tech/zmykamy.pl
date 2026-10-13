@@ -1,0 +1,29 @@
+info:
+  name: Update profile
+  type: http
+  seq: 2
+
+http:
+  method: PATCH
+  url: "{{baseUrl}}/profile"
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Kuba",
+        "themePalette": "ocean"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  All fields are optional, at least one is required.
+
+  - `themePalette`: ocean, beach, cities, mountains, tropics, festivals (or null)
+  - `termsVersion`: records a new terms acceptance and stamps `termsAcceptedAt`

@@ -28,8 +28,6 @@ Errors are returned as `{ "error": { "code", "message" } }`; validation errors a
 
 - `/auth/*` — Better Auth (e.g. `POST /auth/sign-up/email`, `POST /auth/sign-in/email`, `GET /auth/get-session`)
 
-`POST /auth/sign-up/email` also accepts `themePalette` and `termsVersion`
-
 ### Profile
 
 - `GET /profile` — the signed-in user
@@ -37,7 +35,7 @@ Errors are returned as `{ "error": { "code", "message" } }`; validation errors a
 
 ## Manual testing
 
-Open `bruno/` as a collection in [Bruno](https://www.usebruno.com) and select the `local` environment. Run `auth/Sign up` or `auth/Sign in` first — it stores the bearer token used by every other request.
+Open `bruno/` as a collection in [Bruno](https://www.usebruno.com) (3.0+, the collection uses the OpenCollection YAML format). Run `auth/Sign in` and its returned token will be auto-added for future requests.
 
 ## Database
 

@@ -1,0 +1,22 @@
+info:
+  name: Accept terms
+  type: http
+  seq: 3
+
+http:
+  method: PATCH
+  url: "{{baseUrl}}/profile"
+  body:
+    type: json
+    data: |-
+      {
+        "termsVersion": "2026-10"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
