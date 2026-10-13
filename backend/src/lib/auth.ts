@@ -11,7 +11,7 @@ import {
   userNameSchema,
 } from "../schemas/user";
 
-const getValidatedUserName = (name: string) => {
+const getValidatedUserName = (name: unknown) => {
   const result = userNameSchema.safeParse(name);
   if (!result.success) {
     throw new APIError("BAD_REQUEST", {
@@ -53,19 +53,25 @@ export const auth = betterAuth({
         before: async (newUser) => ({
           data: {
             ...newUser,
+            name: getValidatedUserName(newUser.name),
             termsAcceptedAt: newUser.termsVersion ? new Date() : null,
           },
         }),
       },
       update: {
-        before: async (userUpdate) => ({
-          data: {
-            ...(typeof userUpdate.name === "string"
-              ? { name: getValidatedUserName(userUpdate.name) }
-              : {}),
-            ...(userUpdate.termsVersion ? { termsAcceptedAt: new Date() } : {}),
-          },
-        }),
+        before: async (userUpdate, context) => {
+          const currentTermsVersion = context?.context.session?.user.termsVersion;
+          const isNewTermsVersion =
+            Boolean(userUpdate.termsVersion) && userUpdate.termsVersion !== currentTermsVersion;
+          return {
+            data: {
+              ...(userUpdate.name !== undefined
+                ? { name: getValidatedUserName(userUpdate.name) }
+                : {}),
+              ...(isNewTermsVersion ? { termsAcceptedAt: new Date() } : {}),
+            },
+          };
+        },
       },
     },
   },
