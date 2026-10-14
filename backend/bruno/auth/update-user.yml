@@ -1,0 +1,28 @@
+info:
+  name: Update user
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{baseUrl}}/auth/update-user"
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Test",
+        "themePalette": "ocean"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  All fields are optional, at least one is required.
+
+  - `themePalette`: ocean, beach, cities, mountains, tropics, festivals (or null)
+  - `termsVersion`: records a new terms acceptance and stamps `termsAcceptedAt`

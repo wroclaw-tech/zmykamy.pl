@@ -1,0 +1,22 @@
+info:
+  name: Accept terms
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: "{{baseUrl}}/auth/update-user"
+  body:
+    type: json
+    data: |-
+      {
+        "termsVersion": "2026-10"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
