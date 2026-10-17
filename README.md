@@ -27,11 +27,10 @@ The API listens on `http://localhost:3000`. See [`backend/README.md`](backend/RE
 
 Open `ios/zmykamy.pl.xcodeproj` in Xcode and run the `zmykamy.pl` scheme on an iOS Simulator.
 
-By default the app talks to `https://api-zmykamy.b.solvro.pl`. To use the local backend instead, set an environment variable on the scheme:
+Debug builds talk to the local backend at `http://localhost:3000`, so start it first. To use the production API (`https://api-zmykamy.b.solvro.pl`) instead:
 
 1. **Product → Scheme → Edit Scheme…** (`⌘ <`)
 2. Select **Run** → **Arguments**
-3. Under **Environment Variables** click **+** and add `ZMYKAMY_API_URL` = `http://localhost:3000`
-4. Make sure the checkbox next to it is enabled, then run the app
+3. Under **Environment Variables** enable the `ZMYKAMY_API_URL` checkbox, then run the app
 
-Uncheck the variable to switch back to the production API. `localhost` only reaches your Mac from the Simulator, not from a physical device.
+Uncheck it to switch back to the local backend. `localhost` only reaches your Mac from the Simulator, so enable the variable when running on a physical device. Release builds always use the production API.
