@@ -1,7 +1,7 @@
 import SwiftUI
 
 private struct PhotoCard: View {
-    let image: String
+    let image: ImageResource
     let size: CGSize
 
     var body: some View {
@@ -17,9 +17,10 @@ private struct PhotoCard: View {
 }
 
 private enum BadgeIcon {
-    case symbol(String)
+    case symbol(ImageResource)
     case avatar(String, Color)
 }
+
 private struct ShowcaseBadge: View {
     let text: String
     let icon: BadgeIcon
@@ -28,8 +29,8 @@ private struct ShowcaseBadge: View {
     var body: some View {
         HStack(spacing: Spacing.s6) {
             switch icon {
-            case .symbol(let name):
-                Image(name)
+            case .symbol(let resource):
+                Image(resource)
                     .resizable()
                     .frame(width: 18, height: 18)
                     .foregroundStyle(theme.accent)
@@ -39,7 +40,7 @@ private struct ShowcaseBadge: View {
                     .typography(.captionBadge)
                     .foregroundStyle(.neutralWhite)
                     .frame(width: 26, height: 26)
-                    .background(color, in: Circle())
+                    .background(color, in: .circle)
                     .padding(.trailing, 1)
             }
             Text(text)
@@ -49,33 +50,31 @@ private struct ShowcaseBadge: View {
         .padding(.leading, Spacing.s6)
         .padding(.trailing, Spacing.s12)
         .frame(height: 36)
-        .background(.thinMaterial, in: Capsule())
+        .glassEffect()
     }
 }
 
 private struct PhotoCollage: View {
-    @Environment(\.theme) private var theme
-
     var body: some View {
         ZStack {
-            PhotoCard(image: "onboarding_lisbon", size: CGSize(width: 128, height: 164))
+            PhotoCard(image: .onboardingLisbon, size: CGSize(width: 128, height: 164))
                 .rotationEffect(.degrees(-9))
                 .offset(x: -91, y: 7)
 
-            PhotoCard(image: "onboarding_desert", size: CGSize(width: 128, height: 164))
+            PhotoCard(image: .onboardingDesert, size: CGSize(width: 128, height: 164))
                 .rotationEffect(.degrees(8))
                 .offset(x: 91, y: 7)
 
-            PhotoCard(image: "onboarding_wave", size: CGSize(width: 146, height: 190))
+            PhotoCard(image: .onboardingWave, size: CGSize(width: 146, height: 190))
                 .rotationEffect(.degrees(-2))
-            
+
             ShowcaseBadge(
                 text: "Bartek → Ola · 120 zł",
                 icon: .avatar("B", Color(red: 0.478, green: 0.353, blue: 0.878))
             )
             .offset(x: 75, y: -43)
 
-            ShowcaseBadge(text: "Lizbona za 12 dni", icon: .symbol("hourglass_top"))
+            ShowcaseBadge(text: "Lizbona za 12 dni", icon: .symbol(.hourglassTop))
                 .offset(x: -86, y: 67)
         }
         .frame(height: 196)
@@ -84,7 +83,7 @@ private struct PhotoCollage: View {
 
 private struct FeatureCard: View {
     @Environment(\.theme) private var theme
-    let icon: String
+    let icon: ImageResource
     let title: String
     let subtitle: String
 
@@ -95,7 +94,7 @@ private struct FeatureCard: View {
                 .frame(width: 19, height: 19)
                 .foregroundStyle(theme.accentStrong)
                 .frame(width: 34, height: 34)
-                .background(theme.accentTint, in: RoundedRectangle(cornerRadius: 11))
+                .background(theme.accentTint, in: .rect(cornerRadius: 11))
             Text(title)
                 .typography(.calloutEmphasis)
                 .foregroundStyle(.neutralInk)
@@ -107,7 +106,7 @@ private struct FeatureCard: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(Spacing.s14)
-        .background(.neutralWhite, in: RoundedRectangle(cornerRadius: Radius.lg))
+        .background(.neutralWhite, in: .rect(cornerRadius: Radius.lg))
     }
 }
 
@@ -115,12 +114,12 @@ private struct FeaturesShowcase: View {
     var body: some View {
         Grid(horizontalSpacing: 10, verticalSpacing: 10) {
             GridRow {
-                FeatureCard(icon: "calendar_month", title: "Plan dzień po dniu", subtitle: "godziny, adresy, bilety")
-                FeatureCard(icon: "payments", title: "Wspólna kasa", subtitle: "rozliczenia uczestników")
+                FeatureCard(icon: .calendarMonth, title: "Plan dzień po dniu", subtitle: "godziny, adresy, bilety")
+                FeatureCard(icon: .payments, title: "Wspólna kasa", subtitle: "rozliczenia uczestników")
             }
             GridRow {
-                FeatureCard(icon: "photo_library", title: "Jedna galeria", subtitle: "zdjęcia uczestników")
-                FeatureCard(icon: "how_to_vote", title: "Głosowania", subtitle: "wspólne decyzje")
+                FeatureCard(icon: .photoLibrary, title: "Jedna galeria", subtitle: "zdjęcia uczestników")
+                FeatureCard(icon: .howToVote, title: "Głosowania", subtitle: "wspólne decyzje")
             }
         }
     }
@@ -158,22 +157,23 @@ struct WelcomeView: View {
                 Button(action: onStart) {
                     HStack(spacing: Spacing.s6) {
                         Text("Rozpocznij")
-                        Image("arrow_forward")
+                        Image(.arrowForward)
                             .resizable()
                             .frame(width: 20, height: 20)
                     }
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity, minHeight: 54)
-                    .background(theme.accent, in: Capsule())
+                    .typography(Typography(size: 17, weight: .semibold))
+                    .frame(maxWidth: .infinity)
                 }
+                .buttonStyle(.glassProminent)
+                .controlSize(.extraLarge)
+                .tint(theme.accent)
 
                 Button(action: onLogin) {
                     Text("Mam już konto")
                         .typography(.bodyEmphasis)
                         .foregroundStyle(theme.accentStrong)
                         .frame(maxWidth: .infinity, minHeight: 44)
-                        .contentShape(Rectangle())
+                        .contentShape(.rect)
                 }
             }
         }
