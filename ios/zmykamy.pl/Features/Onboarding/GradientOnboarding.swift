@@ -16,6 +16,23 @@ struct GradientOnboarding: View {
     }
 }
 
+struct GradientAuth: View {
+    @Environment(\.theme) private var theme
+
+    var body: some View {
+        GeometryReader { geometry in
+            let size = geometry.size
+            ZStack {
+                theme.background
+                gradientBlob(color: theme.accent.opacity(0.22), radius: (0.66, 0.36), center: (0.10, 0.00), in: size)
+                gradientBlob(color: theme.accent.opacity(0.4), radius: (0.52, 0.36), center: (1.00, 0.22), in: size)
+                gradientBlob(color: theme.accent.opacity(0.4), radius: (0.71, 0.45), center: (0.40, 1.00), in: size)
+            }
+        }
+        .ignoresSafeArea()
+    }
+}
+
 /// Glow from `color` to transparent.
 ///
 /// - Parameters:
