@@ -7,7 +7,7 @@ nonisolated enum APIConfiguration {
            let url = URL(string: override) {
             return url
         }
-        return URL(string: "https://api.zmykamy.b.solvro.pl")!
+        return URL(string: "https://api-zmykamy.b.solvro.pl")!
     }()
 
     static let authBaseURL = baseURL.appending(path: "auth")
