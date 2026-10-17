@@ -27,7 +27,7 @@ The API listens on `http://localhost:3000`. See [`backend/README.md`](backend/RE
 
 Open `ios/zmykamy.pl.xcodeproj` in Xcode and run the `zmykamy.pl` scheme on an iOS Simulator.
 
-By default the app talks to `https://api.zmykamy.b.solvro.pl`. To use the local backend instead, set an environment variable on the scheme:
+By default the app talks to `https://api-zmykamy.b.solvro.pl`. To use the local backend instead, set an environment variable on the scheme:
 
 1. **Product → Scheme → Edit Scheme…** (`⌘ <`)
 2. Select **Run** → **Arguments**
