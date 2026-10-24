@@ -21,6 +21,7 @@ extension ShapeStyle where Self == Color {
     static var statusAITint: Color { Color(red: 0.945, green: 0.925, blue: 1) }
     static var statusWarning: Color { Color(red: 0.478, green: 0.325, blue: 0) }
     static var statusWarningTint: Color { Color(red: 1, green: 0.957, blue: 0.851) }
+    static var statusDanger: Color { Color(red: 0.788, green: 0.263, blue: 0.102) }
 
     static var avatar1: Color { Color(red: 0.898, green: 0.318, blue: 0.165) }
     static var avatar2: Color { Color(red: 0.122, green: 0.373, blue: 0.82) }

@@ -17,13 +17,13 @@ nonisolated final class AuthClient: Sendable {
         self.session = URLSession(configuration: configuration)
     }
 
-    func signUp(_ request: SignUpRequest) async throws(AuthError) -> StoredSession {
-        let (body, response) = try await send("sign-up/email", method: "POST", body: request)
+    func signUp(_ request: SignUpRequest, deviceName: String) async throws(AuthError) -> StoredSession {
+        let (body, response) = try await send("sign-up/email", method: "POST", body: request, deviceName: deviceName)
         return try storedSession(from: body, response: response)
     }
 
-    func signIn(_ request: SignInRequest) async throws(AuthError) -> StoredSession {
-        let (body, response) = try await send("sign-in/email", method: "POST", body: request)
+    func signIn(_ request: SignInRequest, deviceName: String) async throws(AuthError) -> StoredSession {
+        let (body, response) = try await send("sign-in/email", method: "POST", body: request, deviceName: deviceName)
         return try storedSession(from: body, response: response)
     }
 
@@ -44,6 +44,38 @@ nonisolated final class AuthClient: Sendable {
         _ = try await send("sign-out", method: "POST", body: [String: String](), token: token)
     }
 
+    func updateUser(_ request: UpdateUserRequest, token: String) async throws(AuthError) {
+        _ = try await send("update-user", method: "POST", body: request, token: token)
+    }
+
+    func changeEmail(_ request: ChangeEmailRequest, token: String) async throws(AuthError) {
+        _ = try await send("change-email", method: "POST", body: request, token: token)
+    }
+
+    func changePassword(_ request: ChangePasswordRequest, token: String) async throws(AuthError) -> StoredSession? {
+        let (body, response) = try await send("change-password", method: "POST", body: request, token: token)
+        let payload = try decode(AuthTokenResponse.self, from: body)
+        guard let newToken = rotatedToken(in: response) ?? payload.token else { return nil }
+        return StoredSession(token: newToken, user: payload.user)
+    }
+
+    func listSessions(token: String) async throws(AuthError) -> [DeviceSession] {
+        let (body, _) = try await send("list-sessions", method: "GET", token: token)
+        return try decode([DeviceSession].self, from: body)
+    }
+
+    func revokeSession(_ request: RevokeSessionRequest, token: String) async throws(AuthError) {
+        _ = try await send("revoke-session", method: "POST", body: request, token: token)
+    }
+
+    func revokeSessions(token: String) async throws(AuthError) {
+        _ = try await send("revoke-sessions", method: "POST", body: [String: String](), token: token)
+    }
+
+    func deleteUser(_ request: DeleteUserRequest, token: String) async throws(AuthError) {
+        _ = try await send("delete-user", method: "POST", body: request, token: token)
+    }
+
     private func storedSession(from body: Data, response: HTTPURLResponse) throws(AuthError) -> StoredSession {
         let payload = try decode(AuthTokenResponse.self, from: body)
         guard let token = rotatedToken(in: response) ?? payload.token else {
@@ -61,13 +93,17 @@ nonisolated final class AuthClient: Sendable {
         _ path: String,
         method: String,
         body: (some Encodable & Sendable)? = String?.none,
-        token: String? = nil
+        token: String? = nil,
+        deviceName: String? = nil
     ) async throws(AuthError) -> (Data, HTTPURLResponse) {
         var request = URLRequest(url: baseURL.appending(path: path))
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         if let token {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        if let deviceName {
+            request.setValue(deviceName, forHTTPHeaderField: "X-Device-Name")
         }
         if let body {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
