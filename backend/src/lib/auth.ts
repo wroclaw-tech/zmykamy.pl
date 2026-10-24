@@ -5,11 +5,24 @@ import { bearer } from "better-auth/plugins";
 import { db } from "../db";
 import * as schema from "../db/schema";
 import {
+  DATE_FORMATS,
+  LANGUAGES,
   THEME_PALETTES,
+  WEEK_STARTS,
+  blikPhoneSchema,
+  currencySchema,
+  dateFormatSchema,
+  ibanSchema,
+  languageSchema,
+  personNameSchema,
+  phoneSchema,
   termsVersionSchema,
   themePaletteSchema,
   userNameSchema,
+  weekStartSchema,
 } from "../schemas/user";
+import { getDeviceName } from "./device-name";
+import { getIpLocation } from "./geolocation";
 
 const getValidatedUserName = (name: unknown) => {
   const result = userNameSchema.safeParse(name);
@@ -29,7 +42,39 @@ export const auth = betterAuth({
     enabled: true,
   },
   user: {
+    changeEmail: {
+      enabled: true,
+      updateEmailWithoutVerification: true,
+    },
+    deleteUser: {
+      enabled: true,
+    },
     additionalFields: {
+      firstName: {
+        type: "string",
+        required: false,
+        validator: { input: personNameSchema.nullable() },
+      },
+      lastName: {
+        type: "string",
+        required: false,
+        validator: { input: personNameSchema.nullable() },
+      },
+      phone: {
+        type: "string",
+        required: false,
+        validator: { input: phoneSchema.nullable() },
+      },
+      blikPhone: {
+        type: "string",
+        required: false,
+        validator: { input: blikPhoneSchema.nullable() },
+      },
+      iban: {
+        type: "string",
+        required: false,
+        validator: { input: ibanSchema.nullable() },
+      },
       themePalette: {
         type: [...THEME_PALETTES],
         required: false,
@@ -45,9 +90,67 @@ export const auth = betterAuth({
         required: false,
         input: false,
       },
+      language: {
+        type: [...LANGUAGES],
+        required: false,
+        defaultValue: "pl",
+        validator: { input: languageSchema },
+      },
+      defaultCurrency: {
+        type: "string",
+        required: false,
+        defaultValue: "PLN",
+        validator: { input: currencySchema },
+      },
+      dateFormat: {
+        type: [...DATE_FORMATS],
+        required: false,
+        defaultValue: "dd.MM.yyyy",
+        validator: { input: dateFormatSchema },
+      },
+      weekStart: {
+        type: [...WEEK_STARTS],
+        required: false,
+        defaultValue: "monday",
+        validator: { input: weekStartSchema },
+      },
+    },
+  },
+  session: {
+    additionalFields: {
+      deviceName: {
+        type: "string",
+        required: false,
+        input: false,
+      },
+      city: {
+        type: "string",
+        required: false,
+        input: false,
+      },
+      countryCode: {
+        type: "string",
+        required: false,
+        input: false,
+      },
     },
   },
   databaseHooks: {
+    session: {
+      create: {
+        before: async (newSession, context) => {
+          const { city, countryCode } = await getIpLocation(newSession.ipAddress);
+          return {
+            data: {
+              ...newSession,
+              deviceName: getDeviceName(context?.headers ?? context?.request?.headers),
+              city,
+              countryCode,
+            },
+          };
+        },
+      },
+    },
     user: {
       create: {
         before: async (newUser) => ({

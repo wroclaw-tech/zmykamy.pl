@@ -8,6 +8,8 @@ request:
   headers:
     - name: Origin
       value: "{{baseUrl}}"
+    - name: X-Device-Name
+      value: Bruno
   scripts:
     - type: before-request
       code: |-

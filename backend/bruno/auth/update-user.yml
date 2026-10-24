@@ -11,7 +11,17 @@ http:
     data: |-
       {
         "name": "Test",
-        "themePalette": "ocean"
+        "firstName": "Jan",
+        "lastName": "Kowalski",
+        "phone": "+48 512 345 678",
+        "blikPhone": "+48 512 345 678",
+        "iban": "PL61 1090 1014 0000 0712 1981 2874",
+        "themePalette": "ocean",
+        "language": "pl",
+        "defaultCurrency": "PLN",
+        "dateFormat": "dd.MM.yyyy",
+        "weekStart": "monday",
+        "termsVersion": "2026-10"
       }
   auth: inherit
 
@@ -24,5 +34,14 @@ settings:
 docs: |-
   All fields are optional, at least one is required.
 
+  - `name`: nickname shown to other trip members
+  - `firstName`, `lastName`: or null
+  - `phone`: international format, normalized to E.164 (or null)
+  - `blikPhone`: +48 number, normalized to E.164 (or null)
+  - `iban`: checksum-validated, stored without spaces (or null)
   - `themePalette`: ocean, beach, cities, mountains, tropics, festivals (or null)
+  - `language`: pl, en
+  - `defaultCurrency`: ISO 4217 code, e.g. PLN, EUR
+  - `dateFormat`: dd.MM.yyyy, yyyy-MM-dd, dd/MM/yyyy, MM/dd/yyyy
+  - `weekStart`: monday, sunday
   - `termsVersion`: records a new terms acceptance and stamps `termsAcceptedAt`

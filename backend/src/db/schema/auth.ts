@@ -7,15 +7,26 @@ export const user = pgTable("user", {
   email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified").default(false).notNull(),
   image: text("image"),
+  createdAt: timestamp("created_at").notNull(),
+  updatedAt: timestamp("updated_at")
+    .$onUpdate(() => new Date())
+    .notNull(),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  phone: text("phone"),
+  blikPhone: text("blik_phone"),
+  iban: text("iban"),
   themePalette: text("theme_palette", {
     enum: ["ocean", "beach", "cities", "mountains", "tropics", "festivals"],
   }),
   termsVersion: text("terms_version"),
   termsAcceptedAt: timestamp("terms_accepted_at"),
-  createdAt: timestamp("created_at").notNull(),
-  updatedAt: timestamp("updated_at")
-    .$onUpdate(() => new Date())
-    .notNull(),
+  language: text("language", { enum: ["pl", "en"] }).default("pl"),
+  defaultCurrency: text("default_currency").default("PLN"),
+  dateFormat: text("date_format", {
+    enum: ["dd.MM.yyyy", "yyyy-MM-dd", "dd/MM/yyyy", "MM/dd/yyyy"],
+  }).default("dd.MM.yyyy"),
+  weekStart: text("week_start", { enum: ["monday", "sunday"] }).default("monday"),
 });
 
 export const session = pgTable(
@@ -33,6 +44,9 @@ export const session = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    deviceName: text("device_name"),
+    city: text("city"),
+    countryCode: text("country_code"),
   },
   (table) => [index("session_userId_idx").on(table.userId)],
 );

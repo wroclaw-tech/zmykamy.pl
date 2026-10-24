@@ -1,0 +1,19 @@
+info:
+  name: List sessions
+  type: http
+  seq: 8
+
+http:
+  method: GET
+  url: "{{baseUrl}}/auth/list-sessions"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Active sessions with `deviceName`, `city`, `countryCode`, `userAgent` and `ipAddress`. Compare `id` with `get-session` to mark the current one.
