@@ -21,10 +21,10 @@ struct LabeledField: View {
                     TextField(label, text: $text, prompt: prompt.map { Text($0) })
                 }
             }
-                .typography(.bodyLarge)
-                .monospaced(isMonospaced)
-                .foregroundStyle(.neutralInk)
-                .focused($isFocused)
+            .typography(.bodyLarge)
+            .monospaced(isMonospaced)
+            .foregroundStyle(.neutralInk)
+            .focused($isFocused)
         }
         .padding(.horizontal, Spacing.s16)
         .padding(.vertical, Spacing.s12)
