@@ -108,7 +108,7 @@ final class AuthStore {
         endSession()
     }
 
-    private func currentToken() throws(AuthError) -> String {
+    func currentToken() throws(AuthError) -> String {
         guard let token = store.load()?.token else { throw .unauthorized }
         return token
     }
