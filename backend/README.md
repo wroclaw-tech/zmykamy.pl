@@ -16,6 +16,8 @@ The API listens on `http://localhost:3000` locally and on `https://api.zmykamy.p
 
 If port `5432` is taken, set `POSTGRES_PORT` in `.env` and update the port in `DATABASE_URL`.
 
+`bun run db:up` also starts [Garage](https://garagehq.deuxfleurs.fr) as local S3 storage on `http://localhost:3900`; the `garage-init` container creates the `zmykamy` bucket and the access key from `.env.example`. If port `3900` is taken, set `S3_PORT` in `.env` and update the port in `S3_ENDPOINT`. In production the `S3_*` variables point at the shared Garage instance.
+
 ## Endpoints
 
 Mobile clients authenticate with the `Authorization: Bearer <token>` header, using the token from the `set-auth-token` response header. Send `X-Device-Name` (e.g. `iPhone 16 Pro`) on sign-up and sign-in to name the session.
@@ -51,6 +53,32 @@ Errors are returned as `{ "error": { "code", "message" } }`; Better Auth endpoin
 - `POST /auth/revoke-other-sessions` — sign out all other devices
 - `POST /auth/revoke-sessions` — sign out all devices, including the current one
 - `POST /auth/delete-user` — `{ password }`; permanently deletes the account with its sessions and linked accounts. `password` can be omitted (e.g. for accounts without one) when the session was created within the last day
+
+### Trips
+
+All endpoints require authentication and are visible only to trip members; other users get `404`. Changing or deleting a trip requires the `organizer` role, participants get `403`.
+
+- `GET /trips` - trips the user belongs to
+- `POST /trips` - create a trip; the creator becomes its organizer. Returns `201` with the trip:
+  - `name` - 1-60 characters
+  - `destination` - `{ name, country, latitude, longitude }` (all but `name` nullable), or `null`
+  - `startDate`, `endDate` - `YYYY-MM-DD`, `endDate` not before `startDate`
+  - `currency` - ISO 4217 base currency, e.g. `PLN`
+- `GET /trips/:id` - a single trip
+- `PATCH /trips/:id` - update any of the `POST` fields, or `coverImageKey` (`null` removes the cover)
+- `DELETE /trips/:id` - delete the trip with its cover, returns `204`
+- `POST /trips/:id/cover/upload-url` - returns `{ uploadUrl, key }`; `PUT` the JPEG to `uploadUrl` with `Content-Type: image/jpeg` within 5 minutes, then `PATCH` the trip with `coverImageKey: key`
+
+A trip is returned as `{ id, name, destination, startDate, endDate, currency, coverUrl, myRole, members: [{ userId, name, image, role }] }`. `coverUrl` is a presigned link valid for an hour.
+
+## Testing
+
+```bash
+bun run test:setup
+bun run test
+```
+
+`test:setup` creates the `zmykamy_test` database from `.env.test` and migrates it; rerun it after adding migrations. Tests need the docker compose services running.
 
 ## Manual testing
 

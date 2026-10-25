@@ -1,0 +1,47 @@
+info:
+  name: Create trip
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseUrl}}/trips"
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Lizbona",
+        "destination": {
+          "name": "Lizbona",
+          "country": "Portugalia",
+          "latitude": 38.7223,
+          "longitude": -9.1393
+        },
+        "startDate": "2027-05-12",
+        "endDate": "2027-05-18",
+        "currency": "EUR"
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.body?.id) {
+          bru.setVar("tripId", res.body.id);
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  The creator becomes the trip organizer. The returned id is saved as `tripId` for the other trip requests.
+
+  - `name`: 1-60 characters
+  - `destination`: `{ name, country, latitude, longitude }` or null
+  - `startDate`, `endDate`: YYYY-MM-DD, end not before start
+  - `currency`: ISO 4217 code

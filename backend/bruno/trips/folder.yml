@@ -1,0 +1,6 @@
+info:
+  name: trips
+  type: folder
+
+request:
+  auth: inherit
