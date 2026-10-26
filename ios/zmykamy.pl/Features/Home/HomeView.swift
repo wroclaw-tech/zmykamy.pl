@@ -1,17 +1,5 @@
 import SwiftUI
 
-private struct SectionLabel: View {
-    let text: String
-
-    var body: some View {
-        Text(text)
-            .typography(.sectionLabel)
-            .foregroundStyle(.neutralGray)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, Spacing.s6)
-    }
-}
-
 private struct ParticipantStack: View {
     let participants: [TripParticipant]
     @Environment(\.theme) private var theme
@@ -169,26 +157,6 @@ private struct NewTripRow: View {
     }
 }
 
-private struct TripListCard<Content: View>: View {
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        VStack(spacing: 0) {
-            Group(subviews: content) { rows in
-                ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
-                    if index > 0 {
-                        Rectangle()
-                            .fill(.neutralInk2.opacity(0.12))
-                            .frame(height: 0.5)
-                    }
-                    row
-                }
-            }
-        }
-        .background(.neutralWhite, in: .rect(cornerRadius: Radius.xl))
-    }
-}
-
 struct HomeView: View {
     let user: AuthUser
     @Environment(AuthStore.self) private var auth
@@ -205,14 +173,14 @@ struct HomeView: View {
 
                     SectionLabel(text: "ZAPLANOWANE")
                         .padding(.top, Spacing.s16)
-                    TripListCard {
+                    ListCard {
                         ForEach(MockTrips.planned) { TripRow(trip: $0) }
                         NewTripRow { isShowingComingSoon = true }
                     }
 
                     SectionLabel(text: "MINIONE")
                         .padding(.top, Spacing.s16)
-                    TripListCard {
+                    ListCard {
                         ForEach(MockTrips.past) { TripRow(trip: $0) }
                     }
                 }
@@ -236,10 +204,8 @@ struct HomeView: View {
                     .accessibilityLabel("Konto")
                 }
             }
-            .confirmationDialog(user.email, isPresented: $isShowingAccount, titleVisibility: .visible) {
-                Button("Wyloguj się", role: .destructive) {
-                    Task { await auth.signOut() }
-                }
+            .navigationDestination(isPresented: $isShowingAccount) {
+                ProfileView(user: user)
             }
             .alert("Już wkrótce", isPresented: $isShowingComingSoon) {
                 Button("OK", role: .cancel) {}

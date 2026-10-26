@@ -1,17 +1,15 @@
 info:
-  name: Accept terms
+  name: Revoke other sessions
   type: http
-  seq: 5
+  seq: 9
 
 http:
   method: POST
-  url: "{{baseUrl}}/auth/update-user"
+  url: "{{baseUrl}}/auth/revoke-other-sessions"
   body:
     type: json
     data: |-
-      {
-        "termsVersion": "2026-10"
-      }
+      {}
   auth: inherit
 
 settings:
@@ -20,3 +18,6 @@ settings:
   followRedirects: true
   maxRedirects: 5
   forwardAuthorizationHeader: true
+
+docs: |-
+  Signs out every device except the current one.

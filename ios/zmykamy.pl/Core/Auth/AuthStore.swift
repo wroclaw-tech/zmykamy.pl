@@ -1,4 +1,5 @@
 import Observation
+import UIKit
 
 @Observable
 final class AuthStore {
@@ -44,7 +45,7 @@ final class AuthStore {
     }
 
     func signIn(email: String, password: String) async throws(AuthError) {
-        let session = try await client.signIn(SignInRequest(email: email, password: password))
+        let session = try await client.signIn(SignInRequest(email: email, password: password), deviceName: UIDevice.current.name)
         apply(session)
     }
 
@@ -55,8 +56,49 @@ final class AuthStore {
             password: password,
             themePalette: themePalette,
             termsVersion: Self.currentTermsVersion
-        ))
+        ), deviceName: UIDevice.current.name)
         apply(session)
+    }
+
+    func updateUser(_ request: UpdateUserRequest) async throws(AuthError) {
+        let token = try currentToken()
+        try await client.updateUser(request, token: token)
+        try await refresh(token: token)
+    }
+
+    func changeEmail(to newEmail: String) async throws(AuthError) {
+        let token = try currentToken()
+        try await client.changeEmail(ChangeEmailRequest(newEmail: newEmail), token: token)
+        try await refresh(token: token)
+    }
+
+    func changePassword(current: String, new: String, signOutOtherDevices: Bool) async throws(AuthError) {
+        let request = ChangePasswordRequest(currentPassword: current, newPassword: new, revokeOtherSessions: signOutOtherDevices)
+        if let session = try await client.changePassword(request, token: try currentToken()) {
+            apply(session)
+        }
+    }
+
+    func sessions() async throws(AuthError) -> [DeviceSession] {
+        try await client.listSessions(token: try currentToken())
+    }
+
+    func isCurrent(_ session: DeviceSession) -> Bool {
+        store.load()?.token.split(separator: ".").first.map(String.init) == session.token
+    }
+
+    func revoke(_ session: DeviceSession) async throws(AuthError) {
+        try await client.revokeSession(RevokeSessionRequest(token: session.token), token: try currentToken())
+    }
+
+    func signOutEverywhere() async throws(AuthError) {
+        try await client.revokeSessions(token: try currentToken())
+        endSession()
+    }
+
+    func deleteAccount(password: String) async throws(AuthError) {
+        try await client.deleteUser(DeleteUserRequest(password: password), token: try currentToken())
+        endSession()
     }
 
     func signOut() async {
@@ -64,6 +106,19 @@ final class AuthStore {
             try? await client.signOut(token: token)
         }
         endSession()
+    }
+
+    private func currentToken() throws(AuthError) -> String {
+        guard let token = store.load()?.token else { throw .unauthorized }
+        return token
+    }
+
+    private func refresh(token: String) async throws(AuthError) {
+        if let session = try await client.getSession(token: token) {
+            apply(session)
+        } else {
+            endSession()
+        }
     }
 
     private func apply(_ session: StoredSession) {
