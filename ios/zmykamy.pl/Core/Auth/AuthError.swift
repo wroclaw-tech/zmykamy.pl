@@ -30,7 +30,14 @@ nonisolated enum AuthError: LocalizedError, Equatable, Sendable {
         case .passwordTooShort: "Hasło musi mieć co najmniej \(AuthClient.minPasswordLength) znaków."
         case .passwordTooLong: "Hasło jest za długie."
         case .invalidEmail: "Nieprawidłowy adres e-mail."
-        case .validation: "Sprawdź wpisane dane i spróbuj ponownie."
+        case .validation(let message):
+            switch message {
+            case "Invalid phone number": "Nieprawidłowy numer telefonu. Podaj go z kierunkowym, np. +48 512 345 678."
+            case "BLIK requires a +48 phone number": "BLIK wymaga polskiego numeru telefonu (+48)."
+            case "Invalid IBAN": "Nieprawidłowy numer konta. Sprawdź, czy zaczyna się od kodu kraju, np. PL."
+            case "Unsupported currency": "Nieobsługiwana waluta."
+            default: "Sprawdź wpisane dane i spróbuj ponownie."
+            }
         case .unauthorized: "Sesja wygasła. Zaloguj się ponownie."
         case .network: "Brak połączenia z serwerem. Spróbuj ponownie."
         case .server: "Coś poszło nie tak. Spróbuj ponownie za chwilę."

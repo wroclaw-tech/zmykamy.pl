@@ -36,7 +36,7 @@ struct PersonalDetailsView: View {
     private var request: UpdateUserRequest {
         let name = nickname.trimmingCharacters(in: .whitespaces)
         return UpdateUserRequest(
-            name: name == user.name ? nil : name,
+            name: FieldFormat.change(name, from: user.name),
             firstName: FieldFormat.change(FieldFormat.trimmed(firstName), from: user.firstName),
             lastName: FieldFormat.change(FieldFormat.trimmed(lastName), from: user.lastName),
             phone: FieldFormat.change(FieldFormat.compact(phone), from: user.phone)
