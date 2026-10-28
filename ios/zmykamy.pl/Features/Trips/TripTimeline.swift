@@ -119,6 +119,7 @@ nonisolated enum TripDateFormat {
         style.locale = locale
         style.calendar = calendar
         style.timeZone = calendar.timeZone
-        return (start.date(in: calendar)..<end.date(in: calendar)).formatted(style)
+        let (lower, upper) = (start.date(in: calendar), end.date(in: calendar))
+        return (min(lower, upper)..<max(lower, upper)).formatted(style)
     }
 }
