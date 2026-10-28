@@ -162,7 +162,6 @@ struct HomeView: View {
     @State private var createdTrip: Trip?
     @State private var loadError: String?
     @State private var isShowingRefreshError = false
-    @Namespace private var tripTransition
 
     init(user: AuthUser, auth: AuthStore) {
         self.user = user
@@ -206,7 +205,6 @@ struct HomeView: View {
         }
         .fullScreenCover(item: $openTrip) { trip in
             TripView(tripID: trip.id, user: user)
-                .navigationTransition(.zoom(sourceID: trip.id, in: tripTransition))
         }
         .environment(trips)
     }
@@ -255,7 +253,6 @@ struct HomeView: View {
                         FeaturedTripCard(trip: featured, viewerID: user.id, today: today)
                     }
                     .buttonStyle(.plain)
-                    .matchedTransitionSource(id: featured.id, in: tripTransition)
                     .padding(.bottom, Spacing.s16)
                 }
 
@@ -288,7 +285,6 @@ struct HomeView: View {
             TripRow(trip: trip, today: today)
         }
         .buttonStyle(.plain)
-        .matchedTransitionSource(id: trip.id, in: tripTransition)
     }
 
     private func openCreatedTrip() {
