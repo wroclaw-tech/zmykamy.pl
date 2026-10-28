@@ -1,42 +1,31 @@
 import SwiftUI
 
-private struct ParticipantStack: View {
-    let participants: [TripParticipant]
-    @Environment(\.theme) private var theme
+private struct FeaturedTripCard: View {
+    let trip: Trip
+    let viewerID: String
+    let today: LocalDate
 
-    var body: some View {
-        HStack(spacing: -7) {
-            ForEach(participants) { participant in
-                Text(participant.initial)
-                    .typography(.captionBadge)
-                    .foregroundStyle(.neutralWhite)
-                    .frame(width: 26, height: 26)
-                    .background(participant.color ?? theme.accent, in: .circle)
-                    .overlay { Circle().strokeBorder(.neutralWhite, lineWidth: 2) }
-            }
+    private var status: (icon: ImageResource, text: String) {
+        switch trip.phase(on: today) {
+        case .ongoing(let day, let total): (.sunny, "Trwa · dzień \(day) z \(total)")
+        case .upcoming(let daysLeft): (.hourglassTop, "Za \(PolishPlural.days(daysLeft))")
+        case .past: (.checkCircle, "Zakończony")
         }
-        .accessibilityHidden(true)
     }
-}
 
-private struct CurrentTripCard: View {
-    let trip: UpcomingTrip
+    private var subtitle: String {
+        let place = trip.destination.map { $0.country ?? $0.name }
+        return [TripDateFormat.range(trip.startDate, trip.endDate), place].compactMap(\.self).joined(separator: " · ")
+    }
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: 34)
-        Color.clear
+        TripCover(url: trip.coverUrl)
             .frame(height: 380)
-            .overlay {
-                Image(trip.image)
-                    .resizable()
-                    .scaledToFill()
-            }
             .overlay(alignment: .topLeading) {
                 HStack(spacing: Spacing.s6) {
-                    Image(.sunny)
-                        .resizable()
-                        .frame(width: 18, height: 22)
-                    Text(trip.status)
+                    Image(status.icon)
+                    Text(status.text)
                         .typography(.subheadEmphasis)
                         .foregroundStyle(.neutralInk)
                 }
@@ -48,14 +37,14 @@ private struct CurrentTripCard: View {
             .overlay(alignment: .bottom) {
                 HStack {
                     VStack(alignment: .leading, spacing: Spacing.s4) {
-                        Text(trip.title)
+                        Text(trip.name)
                             .typography(.title1)
-                        Text(trip.subtitle)
+                        Text(subtitle)
                             .typography(.calloutRegular)
                             .foregroundStyle(.neutralInk2)
                         HStack(spacing: Spacing.s8) {
-                            ParticipantStack(participants: trip.participants)
-                            Text("\(trip.participants.count) osób")
+                            MemberAvatarStack(members: trip.members, viewerID: viewerID)
+                            Text(PolishPlural.people(trip.members.count))
                                 .typography(.subheadRegular)
                                 .foregroundStyle(.neutralInk2)
                         }
@@ -76,24 +65,30 @@ private struct CurrentTripCard: View {
             .contentShape(shape)
             .shadow(color: Color(red: 0.369, green: 0.227, blue: 0.314).opacity(0.22), radius: 15, y: 14)
             .accessibilityElement(children: .combine)
-            .accessibilityAddTraits(.isButton)
     }
 }
 
 private struct TripRow: View {
-    let trip: TripSummary
+    let trip: Trip
+    let today: LocalDate
     @Environment(\.theme) private var theme
+
+    private var subtitle: String {
+        let isPast = trip.phase(on: today) == .past
+        let dates = TripDateFormat.shortRange(trip.startDate, trip.endDate, includesYear: isPast)
+        return "\(dates) · \(trip.members.count) os."
+    }
 
     var body: some View {
         HStack(spacing: 14) {
-            RoundedRectangle(cornerRadius: 16)
-                .fill(LinearGradient(colors: trip.thumbnail(theme), startPoint: .topLeading, endPoint: .bottomTrailing))
+            TripCover(url: trip.coverUrl)
                 .frame(width: 54, height: 54)
+                .clipShape(.rect(cornerRadius: 16))
             VStack(alignment: .leading, spacing: 2) {
-                Text(trip.title)
+                Text(trip.name)
                     .typography(Typography(size: 17, weight: .semibold))
                     .foregroundStyle(.neutralInk)
-                Text(trip.subtitle)
+                Text(subtitle)
                     .typography(.subheadRegular)
                     .foregroundStyle(.neutralGray)
             }
@@ -102,29 +97,29 @@ private struct TripRow: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, Spacing.s12)
+        .contentShape(.rect)
         .accessibilityElement(children: .combine)
     }
 
     @ViewBuilder
     private var badge: some View {
-        switch trip.badge {
-        case .countdown(let text):
-            Text(text)
-                .typography(Typography(size: 13, weight: .semibold))
-                .foregroundStyle(theme.accentStrong)
-                .padding(.horizontal, 10)
-                .frame(height: 26)
-                .background(theme.accentTint, in: .capsule)
-        case .settled:
-            HStack(spacing: Spacing.s4) {
-                Image(.checkCircle)
-                    .resizable()
-                    .frame(width: 18, height: 18)
-                Text("Rozliczony")
-                    .typography(Typography(size: 13, weight: .semibold))
-            }
-            .foregroundStyle(theme.accentStrong)
+        switch trip.phase(on: today) {
+        case .upcoming(let daysLeft):
+            badgeLabel("za \(PolishPlural.days(daysLeft))")
+        case .ongoing:
+            badgeLabel("trwa")
+        case .past:
+            EmptyView()
         }
+    }
+
+    private func badgeLabel(_ text: String) -> some View {
+        Text(text)
+            .typography(Typography(size: 13, weight: .semibold))
+            .foregroundStyle(theme.accentStrong)
+            .padding(.horizontal, 10)
+            .frame(height: 26)
+            .background(theme.accentTint, in: .capsule)
     }
 }
 
@@ -159,72 +154,176 @@ private struct NewTripRow: View {
 
 struct HomeView: View {
     let user: AuthUser
-    @Environment(AuthStore.self) private var auth
     @Environment(\.theme) private var theme
+    @State private var trips: TripsStore
     @State private var isShowingAccount = false
-    @State private var isShowingComingSoon = false
+    @State private var isCreatingTrip = false
+    @State private var openTrip: Trip?
+    @State private var createdTrip: Trip?
+    @State private var loadError: String?
+    @State private var isShowingRefreshError = false
+
+    init(user: AuthUser, auth: AuthStore) {
+        self.user = user
+        _trips = State(initialValue: TripsStore(auth: auth))
+    }
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: Spacing.s8) {
-                    SectionLabel(text: "NAJBLIŻSZY")
-                    CurrentTripCard(trip: MockTrips.current)
-
-                    SectionLabel(text: "ZAPLANOWANE")
-                        .padding(.top, Spacing.s16)
-                    ListCard {
-                        ForEach(MockTrips.planned) { TripRow(trip: $0) }
-                        NewTripRow { isShowingComingSoon = true }
+            content
+                .background { theme.background.ignoresSafeArea() }
+                .navigationTitle("Wyjazdy")
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Nowy wyjazd", image: .addRounded) { isCreatingTrip = true }
                     }
+                    ToolbarSpacer(.fixed, placement: .topBarTrailing)
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button { isShowingAccount = true } label: {
+                            Text(String(user.name.prefix(1)).uppercased())
+                                .typography(Typography(size: 17, weight: .bold))
+                        }
+                        .buttonStyle(.glassProminent)
+                        .tint(theme.accent)
+                        .accessibilityLabel("Konto")
+                    }
+                }
+                .navigationDestination(isPresented: $isShowingAccount) {
+                    ProfileView(user: user)
+                }
+                .alert("Nie udało się odświeżyć", isPresented: $isShowingRefreshError) {
+                    Button("OK", role: .cancel) {}
+                } message: {
+                    Text(loadError ?? "")
+                }
+        }
+        .task { await load() }
+        .sheet(isPresented: $isCreatingTrip, onDismiss: openCreatedTrip) {
+            TripFormView(user: user) { created in
+                createdTrip = created
+            }
+        }
+        .fullScreenCover(item: $openTrip) { trip in
+            TripView(tripID: trip.id, user: user)
+        }
+        .environment(trips)
+    }
 
+    @ViewBuilder
+    private var content: some View {
+        if !trips.hasLoaded {
+            if let loadError {
+                ContentUnavailableView {
+                    Label("Nie udało się wczytać wyjazdów", image: .flightTakeoff)
+                } description: {
+                    Text(loadError)
+                } actions: {
+                    Button("Spróbuj ponownie") {
+                        Task { await load() }
+                    }
+                    .buttonStyle(.glassProminent)
+                }
+            } else {
+                ProgressView()
+            }
+        } else {
+            let today = LocalDate(.now)
+            let sections = TripSections(trips: trips.trips, today: today)
+            if sections.isEmpty {
+                ContentUnavailableView {
+                    Label("Nie masz jeszcze wyjazdów", image: .flightTakeoff)
+                } description: {
+                    Text("Zaplanuj pierwszy i zaproś ekipę.")
+                } actions: {
+                    Button("Utwórz wyjazd") { isCreatingTrip = true }
+                        .buttonStyle(.glassProminent)
+                }
+            } else {
+                list(sections, today: today)
+            }
+        }
+    }
+
+    private func list(_ sections: TripSections, today: LocalDate) -> some View {
+        ScrollView {
+            VStack(spacing: Spacing.s8) {
+                if let featured = sections.featured {
+                    SectionLabel(text: "NAJBLIŻSZY")
+                    Button { openTrip = featured } label: {
+                        FeaturedTripCard(trip: featured, viewerID: user.id, today: today)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.bottom, Spacing.s16)
+                }
+
+                SectionLabel(text: "ZAPLANOWANE")
+                ListCard {
+                    ForEach(sections.planned) { trip in
+                        tripButton(trip, today: today)
+                    }
+                    NewTripRow { isCreatingTrip = true }
+                }
+
+                if !sections.past.isEmpty {
                     SectionLabel(text: "MINIONE")
                         .padding(.top, Spacing.s16)
                     ListCard {
-                        ForEach(MockTrips.past) { TripRow(trip: $0) }
+                        ForEach(sections.past) { trip in
+                            tripButton(trip, today: today)
+                        }
                     }
                 }
-                .padding(.horizontal, Spacing.gutter)
-                .padding(.bottom, Spacing.s24)
             }
-            .background { theme.background.ignoresSafeArea() }
-            .navigationTitle("Wyjazdy")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Nowy wyjazd", image: .addRounded) { isShowingComingSoon = true }
-                }
-                ToolbarSpacer(.fixed, placement: .topBarTrailing)
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { isShowingAccount = true } label: {
-                        Text(String(user.name.prefix(1)).uppercased())
-                            .typography(Typography(size: 17, weight: .bold))
-                    }
-                    .buttonStyle(.glassProminent)
-                    .tint(theme.accent)
-                    .accessibilityLabel("Konto")
-                }
-            }
-            .navigationDestination(isPresented: $isShowingAccount) {
-                ProfileView(user: user)
-            }
-            .alert("Już wkrótce", isPresented: $isShowingComingSoon) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text("Tworzenie wyjazdów będzie dostępne wkrótce.")
-            }
+            .padding(.horizontal, Spacing.gutter)
+            .padding(.bottom, Spacing.s24)
+        }
+        .refreshable { await refresh() }
+    }
+
+    private func tripButton(_ trip: Trip, today: LocalDate) -> some View {
+        Button { openTrip = trip } label: {
+            TripRow(trip: trip, today: today)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func openCreatedTrip() {
+        openTrip = createdTrip
+        createdTrip = nil
+    }
+
+    private func load() async {
+        loadError = nil
+        do throws(APIError) {
+            try await trips.load()
+        } catch {
+            loadError = error.localizedDescription
+        }
+    }
+
+    private func refresh() async {
+        do throws(APIError) {
+            try await trips.load()
+        } catch {
+            loadError = error.localizedDescription
+            isShowingRefreshError = true
         }
     }
 }
 
 #Preview {
-    HomeView(user: AuthUser(
-        id: "preview",
-        name: "Kuba",
-        email: "kuba@zmykamy.pl",
-        image: nil,
-        themePalette: "ocean",
-        termsVersion: AuthStore.currentTermsVersion,
-        termsAcceptedAt: .now
-    ))
-    .environment(AuthStore())
+    let auth = AuthStore()
+    HomeView(
+        user: AuthUser(
+            id: "preview",
+            name: "Kuba",
+            email: "kuba@zmykamy.pl",
+            image: nil,
+            themePalette: "ocean",
+            termsVersion: AuthStore.currentTermsVersion,
+            termsAcceptedAt: .now
+        ),
+        auth: auth
+    )
+    .environment(auth)
 }

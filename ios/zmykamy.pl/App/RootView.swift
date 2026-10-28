@@ -18,7 +18,7 @@ struct RootView: View {
                 OnboardingFlow(climate: $selectedClimate)
                     .transition(.opacity)
             case .signedIn(let user):
-                HomeView(user: user)
+                HomeView(user: user, auth: auth)
                     .transition(.opacity)
             }
         }
