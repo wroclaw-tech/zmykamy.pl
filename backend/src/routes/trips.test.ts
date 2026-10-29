@@ -2,39 +2,7 @@ import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { db } from "../db";
 import { trip, tripMember, user } from "../db/schema";
 import app from "../index";
-import { auth } from "../lib/auth";
-
-const lisbon = {
-  name: "Lizbona",
-  destination: { name: "Lizbona", country: "Portugalia", latitude: 38.72, longitude: -9.14 },
-  startDate: "2027-05-12",
-  endDate: "2027-05-18",
-  currency: "EUR",
-};
-
-type TestUser = { id: string; headers: Record<string, string> };
-
-const createUser = async (name: string): Promise<TestUser> => {
-  const { token, user: created } = await auth.api.signUpEmail({
-    body: { name, email: `${name.toLowerCase()}@example.com`, password: "password123" },
-  });
-  return {
-    id: created.id,
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-  };
-};
-
-const request = (path: string, as: TestUser, init: { method?: string; body?: unknown } = {}) =>
-  app.request(path, {
-    method: init.method ?? "GET",
-    headers: as.headers,
-    body: init.body === undefined ? undefined : JSON.stringify(init.body),
-  });
-
-const createTrip = async (as: TestUser, body: unknown = lisbon) => {
-  const response = await request("/trips", as, { method: "POST", body });
-  return (await response.json()) as { id: string };
-};
+import { createTrip, createUser, lisbon, request } from "./test-helpers";
 
 beforeAll(() => {
   if (!process.env.DATABASE_URL?.endsWith("_test")) {

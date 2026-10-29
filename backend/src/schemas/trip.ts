@@ -17,6 +17,10 @@ const dateRangeIssue = { message: "endDate must not be before startDate", path: 
 
 export const tripIdParamSchema = z.object({ id: z.uuid() });
 
+export const tripMemberParamSchema = z.object({ id: z.uuid(), userId: z.string().min(1) });
+
+export const inviteSlugParamSchema = z.object({ slug: z.string().min(1).max(64) });
+
 export const createTripSchema = z
   .object({
     name: z.string().trim().min(1).max(60),
