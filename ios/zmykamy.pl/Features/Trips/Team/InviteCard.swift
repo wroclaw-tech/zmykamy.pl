@@ -49,8 +49,7 @@ struct InviteCard: View {
             }
             Spacer(minLength: 0)
             Button(action: onShowQR) {
-                Image(systemName: "qrcode")
-                    .font(.system(size: 22))
+                Image(.qrCode2)
                     .foregroundStyle(theme.accent)
                     .frame(width: 52, height: 52)
                     .background(theme.accent.opacity(0.12), in: .rect(cornerRadius: Radius.sm))
@@ -64,7 +63,7 @@ struct InviteCard: View {
     @ViewBuilder
     private var linkField: some View {
         HStack(spacing: Spacing.s8) {
-            Image(systemName: "link")
+            Image(.link)
                 .foregroundStyle(.neutralGray)
             switch state {
             case .loading:
@@ -91,19 +90,19 @@ struct InviteCard: View {
     private var actions: some View {
         HStack(spacing: Spacing.s8) {
             Button(action: copy) {
-                Label(didCopy ? "Skopiowano" : "Kopiuj link", systemImage: didCopy ? "checkmark" : "doc.on.doc")
+                Label(didCopy ? "Skopiowano" : "Kopiuj link", image: didCopy ? .check : .contentCopy)
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.glass)
             if let invite {
                 ShareLink(item: invite.url, message: Text("Dołącz do wyjazdu „\(tripName)” w Zmykamy")) {
-                    Label("Udostępnij", systemImage: "square.and.arrow.up")
+                    Label("Udostępnij", image: .iosShare)
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.glassProminent)
             } else {
                 Button {} label: {
-                    Label("Udostępnij", systemImage: "square.and.arrow.up")
+                    Label("Udostępnij", image: .iosShare)
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.glassProminent)

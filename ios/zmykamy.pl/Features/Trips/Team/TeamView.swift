@@ -69,7 +69,7 @@ struct TeamView: View {
             if let invite {
                 ToolbarItem(placement: .topBarTrailing) {
                     ShareLink(item: invite.url, message: Text("Dołącz do wyjazdu „\(trip.name)” w Zmykamy")) {
-                        Image(systemName: "person.badge.plus")
+                        Image(.personAdd)
                     }
                     .accessibilityLabel("Zaproś uczestników")
                 }
