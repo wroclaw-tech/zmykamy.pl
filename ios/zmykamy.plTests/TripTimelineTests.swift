@@ -27,7 +27,7 @@ struct TripTimelineTests {
         let json = """
         {"id":"t1","name":"Lizbona","destination":{"name":"Lizbona","country":"Portugalia","latitude":38.7,"longitude":-9.1},\
         "startDate":"2027-05-12","endDate":"2027-05-18","currency":"EUR","coverUrl":null,"myRole":"organizer",\
-        "members":[{"userId":"u1","name":"Kuba","image":null,"role":"organizer"}]}
+        "members":[{"userId":"u1","name":"Kuba","image":null,"role":"organizer","balance":0}]}
         """
         let trip = try APIClient.decoder.decode(Trip.self, from: Data(json.utf8))
 
