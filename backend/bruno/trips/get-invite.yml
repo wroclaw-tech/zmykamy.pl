@@ -1,0 +1,27 @@
+info:
+  name: Get invite
+  type: http
+  seq: 7
+
+http:
+  method: GET
+  url: "{{baseUrl}}/trips/{{tripId}}/invite"
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.body?.code) {
+          bru.setVar("inviteCode", res.body.code);
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Any member. Returns `{ code, url }`, creating the trip's invite on first use. The code is saved as `inviteCode` for the invite requests.

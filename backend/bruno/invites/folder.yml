@@ -1,0 +1,6 @@
+info:
+  name: invites
+  type: folder
+
+request:
+  auth: inherit
