@@ -51,7 +51,10 @@ struct TripView: View {
                     ComingSoonTab(title: "Galeria")
                 }
                 Tab("Ekipa", image: "tab_group") {
-                    ComingSoonTab(title: "Ekipa")
+                    NavigationStack {
+                        TeamView(trip: trip, user: user)
+                            .toolbar { CloseTripButton() }
+                    }
                 }
             }
             .tint(theme.accent)

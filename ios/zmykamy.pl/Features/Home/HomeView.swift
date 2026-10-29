@@ -155,6 +155,7 @@ private struct NewTripRow: View {
 struct HomeView: View {
     let user: AuthUser
     @Environment(\.theme) private var theme
+    @Environment(InviteLinkRouter.self) private var inviteRouter
     @State private var trips: TripsStore
     @State private var isShowingAccount = false
     @State private var isCreatingTrip = false
@@ -201,6 +202,11 @@ struct HomeView: View {
         .sheet(isPresented: $isCreatingTrip, onDismiss: openCreatedTrip) {
             TripFormView(user: user) { created in
                 createdTrip = created
+            }
+        }
+        .sheet(item: Bindable(inviteRouter).pending, onDismiss: openCreatedTrip) { invite in
+            InviteJoinView(code: invite.code) { joined in
+                createdTrip = joined
             }
         }
         .fullScreenCover(item: $openTrip) { trip in
@@ -326,4 +332,5 @@ struct HomeView: View {
         auth: auth
     )
     .environment(auth)
+    .environment(InviteLinkRouter())
 }
