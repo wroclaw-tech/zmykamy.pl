@@ -2,7 +2,7 @@ import { and, eq, gt, lt, or } from "drizzle-orm";
 import { Hono } from "hono";
 import type { z } from "zod";
 import { db } from "../db";
-import { media, planPoint, trip, tripInvite, tripMember } from "../db/schema";
+import { media, planPoint, trip, tripDocument, tripInvite, tripMember } from "../db/schema";
 import type { AppEnv } from "../lib/app-env";
 import { getBalancesByTrip, getTripBalances } from "../lib/balances";
 import { ApiError } from "../lib/errors";
@@ -215,14 +215,21 @@ export const trips = new Hono<AppEnv>()
   .delete("/:id", validate("param", tripIdParamSchema), async (c) => {
     const { id } = c.req.valid("param");
     const current = await getOrganizerTrip(id, c.get("user").id);
-    const files = await db.query.media.findMany({
-      where: eq(media.tripId, id),
-      columns: { key: true, thumbnailKey: true },
-    });
+    const [files, documentFiles] = await Promise.all([
+      db.query.media.findMany({
+        where: eq(media.tripId, id),
+        columns: { key: true, thumbnailKey: true },
+      }),
+      db.query.tripDocument.findMany({
+        where: eq(tripDocument.tripId, id),
+        columns: { key: true },
+      }),
+    ]);
     await db.delete(trip).where(eq(trip.id, id));
     await deleteFilesQuietly([
       current.coverImageKey,
       ...files.flatMap((file) => [file.key, file.thumbnailKey]),
+      ...documentFiles.map((file) => file.key),
     ]);
     return c.body(null, 204);
   })

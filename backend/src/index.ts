@@ -4,6 +4,7 @@ import type { AppEnv } from "./lib/app-env";
 import { auth } from "./lib/auth";
 import { handleError, handleNotFound } from "./lib/errors";
 import { logger } from "./lib/logger";
+import { documents } from "./routes/documents";
 import { expenses } from "./routes/expenses";
 import { invites } from "./routes/invites";
 import { gallery } from "./routes/media";
@@ -23,6 +24,7 @@ app.route("/trips", trips);
 app.route("/trips", plan);
 app.route("/trips", expenses);
 app.route("/trips", gallery);
+app.route("/trips", documents);
 app.route("/invites", invites);
 app.route("/", universalLinks);
 

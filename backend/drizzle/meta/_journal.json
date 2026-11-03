@@ -57,6 +57,13 @@
       "when": 1793731871840,
       "tag": "0007_silent_newton_destine",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793732573395,
+      "tag": "0008_magenta_mimic",
+      "breakpoints": true
     }
   ]
 }
