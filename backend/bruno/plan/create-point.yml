@@ -1,0 +1,44 @@
+info:
+  name: Create point
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseUrl}}/trips/{{tripId}}/plan/points"
+  body:
+    type: json
+    data: |-
+      {
+        "date": "2027-05-14",
+        "time": "09:12",
+        "title": "Pociąg do Sintry",
+        "description": "Dworzec Rossio, ok. 40 min",
+        "place": "Rossio",
+        "icon": "train"
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.body?.id) {
+          bru.setVar("pointId", res.body.id);
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Any trip member. The returned id is saved as `pointId`.
+
+  - `date`: YYYY-MM-DD, within the trip dates
+  - `time`: HH:MM, wall-clock time at the destination
+  - `title`: 1-120 characters
+  - `description`, `place`: optional, null to leave empty
+  - `icon`: one of the plan icons, defaults to `location_on`

@@ -26,3 +26,4 @@ docs: |-
   Organizer only. All create fields are optional, at least one is required.
 
   - `coverImageKey`: key returned by "Get cover upload url" after uploading the image, or null to remove the cover
+  - `startDate`, `endDate`: rejected with 409 `plan_points_out_of_range` while plan points would fall outside the new dates

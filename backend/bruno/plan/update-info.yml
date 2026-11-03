@@ -1,0 +1,25 @@
+info:
+  name: Update info card
+  type: http
+  seq: 6
+
+http:
+  method: PATCH
+  url: "{{baseUrl}}/trips/{{tripId}}/plan/info/{{infoId}}"
+  body:
+    type: json
+    data: |-
+      {
+        "text": "Klucze w skrytce przy wejściu"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  The card author or an organizer. All create fields are optional, at least one is required.

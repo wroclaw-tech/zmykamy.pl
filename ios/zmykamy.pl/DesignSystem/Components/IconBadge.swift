@@ -8,6 +8,7 @@ struct IconBadge<Foreground: ShapeStyle, Background: ShapeStyle>: View {
     var body: some View {
         Image(image)
             .resizable()
+            .scaledToFit()
             .frame(width: 20, height: 20)
             .foregroundStyle(foreground)
             .frame(width: 34, height: 34)
