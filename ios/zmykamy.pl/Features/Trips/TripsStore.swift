@@ -6,14 +6,14 @@ final class TripsStore {
     private(set) var trips: [Trip] = []
     private(set) var hasLoaded = false
 
-    private let auth: AuthStore
+    let api: AuthorizedAPI
     private let client: APIClient
 
     private static let coverMaxDimension: CGFloat = 2048
     private static let coverContentType = "image/jpeg"
 
     init(auth: AuthStore, client: APIClient = APIClient()) {
-        self.auth = auth
+        self.api = AuthorizedAPI(auth: auth, client: client)
         self.client = client
     }
 
@@ -119,22 +119,10 @@ final class TripsStore {
         trips[index] = trip
     }
 
-    /// Runs a request with the current session token and signs out when the session is no longer valid.
     private func call<Response>(
         _ request: (APIClient, String) async throws(APIError) -> Response
     ) async throws(APIError) -> Response {
-        do throws(APIError) {
-            let token: String
-            do {
-                token = try auth.currentToken()
-            } catch {
-                throw APIError.unauthorized
-            }
-            return try await request(client, token)
-        } catch .unauthorized {
-            await auth.signOut()
-            throw .unauthorized
-        }
+        try await api.call(request)
     }
 
     private static func coverData(from image: UIImage) -> Data? {

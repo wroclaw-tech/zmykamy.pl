@@ -1,6 +1,6 @@
 import SwiftUI
 
-private struct CloseTripButton: ToolbarContent {
+struct CloseTripButton: ToolbarContent {
     @Environment(\.dismiss) private var dismiss
 
     var body: some ToolbarContent {
@@ -42,7 +42,7 @@ struct TripView: View {
                     }
                 }
                 Tab("Plan", image: "tab_calendar_month") {
-                    ComingSoonTab(title: "Plan")
+                    PlanView(trip: trip, user: user)
                 }
                 Tab("Wydatki", image: "tab_payments") {
                     ComingSoonTab(title: "Wydatki")

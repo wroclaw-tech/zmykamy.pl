@@ -1,48 +1,6 @@
 import PhotosUI
 import SwiftUI
 
-private struct FormCard<Trailing: View, Content: View>: View {
-    let title: String
-    @ViewBuilder var trailing: Trailing
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.s12) {
-            HStack {
-                Text(title)
-                    .typography(.calloutEmphasis)
-                    .foregroundStyle(.neutralInk)
-                Spacer()
-                trailing
-            }
-            content
-        }
-        .padding(Spacing.s16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.neutralWhite, in: .rect(cornerRadius: Radius.lg))
-    }
-}
-
-extension FormCard where Trailing == EmptyView {
-    init(title: String, @ViewBuilder content: () -> Content) {
-        self.init(title: title, trailing: { EmptyView() }, content: content)
-    }
-}
-
-private struct FieldRow<Content: View>: View {
-    @ViewBuilder let content: Content
-    @Environment(\.theme) private var theme
-
-    var body: some View {
-        HStack(spacing: Spacing.s8) {
-            content
-        }
-        .padding(.horizontal, Spacing.s14)
-        .frame(minHeight: 44)
-        .background(theme.background, in: .rect(cornerRadius: Radius.sm))
-    }
-}
-
 /// Creates a trip, or edits one when `trip` is given.
 struct TripFormView: View {
     let user: AuthUser
@@ -65,6 +23,8 @@ struct TripFormView: View {
     @State private var errorMessage = ""
     @State private var isShowingError = false
     @State private var isShowingCoverError = false
+    @State private var savedTrip: Trip?
+    @State private var wizardTrip: Trip?
 
     init(user: AuthUser, trip: Trip? = nil, onSaved: @escaping (Trip) -> Void = { _ in }) {
         self.user = user
@@ -79,10 +39,7 @@ struct TripFormView: View {
     }
 
     private var calendar: Calendar {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.locale = Locale(identifier: "pl_PL")
-        calendar.firstWeekday = user.weekStart == "sunday" ? 1 : 2
-        return calendar
+        user.calendar
     }
 
     private var trimmedName: String {
@@ -144,8 +101,13 @@ struct TripFormView: View {
             } message: {
                 Text(errorMessage)
             }
+            .navigationDestination(isPresented: Binding(get: { wizardTrip != nil }, set: { if !$0 { wizardTrip = nil } })) {
+                if let wizardTrip {
+                    PlanWizardView(trip: wizardTrip, user: user, onFinish: { dismiss() })
+                }
+            }
             .alert("Nie udało się zapisać okładki", isPresented: $isShowingCoverError) {
-                Button("OK", role: .cancel) { dismiss() }
+                Button("OK", role: .cancel) { finishSaving() }
             } message: {
                 Text("Wyjazd jest zapisany. Okładkę możesz dodać później w edycji wyjazdu.")
             }
@@ -159,7 +121,7 @@ struct TripFormView: View {
     private var placeCard: some View {
         FormCard(title: "Dokąd?") {
             Button { isSearchingDestination = true } label: {
-                FieldRow {
+                FormFieldRow {
                     Text(destination.map { [$0.name, $0.country].compactMap(\.self).joined(separator: ", ") } ?? "Wybierz miejsce")
                         .typography(.bodyRegular)
                         .foregroundStyle(destination == nil ? AnyShapeStyle(.neutralGray) : AnyShapeStyle(.neutralInk))
@@ -181,7 +143,7 @@ struct TripFormView: View {
                 }
             }
 
-            FieldRow {
+            FormFieldRow {
                 TextField("Nazwa wyjazdu", text: $name, prompt: Text("np. Sylwek w Zakopanem"))
                     .typography(.bodyRegular)
                     .foregroundStyle(.neutralInk)
@@ -197,11 +159,11 @@ struct TripFormView: View {
                 .typography(Typography(size: 13, weight: .semibold))
                 .foregroundStyle(theme.accentStrong)
         } content: {
-            FieldRow {
+            FormFieldRow {
                 DatePicker("Od", selection: $startDate, displayedComponents: .date)
                     .typography(.bodyRegular)
             }
-            FieldRow {
+            FormFieldRow {
                 DatePicker("Do", selection: $endDate, in: startDate..., displayedComponents: .date)
                     .typography(.bodyRegular)
             }
@@ -254,7 +216,7 @@ struct TripFormView: View {
             NavigationLink {
                 CurrencyPickerView(selection: $currency)
             } label: {
-                FieldRow {
+                FormFieldRow {
                     Text(currency)
                         .typography(.bodyEmphasis)
                         .foregroundStyle(.neutralInk)
@@ -322,6 +284,7 @@ struct TripFormView: View {
                 return
             }
             onSaved(saved)
+            savedTrip = saved
 
             if newCover != nil || removesCover {
                 do throws(APIError) {
@@ -331,6 +294,15 @@ struct TripFormView: View {
                     return
                 }
             }
+            finishSaving()
+        }
+    }
+
+    /// A new trip continues into the plan step; editing just closes the form.
+    private func finishSaving() {
+        if trip == nil, let savedTrip {
+            wizardTrip = savedTrip
+        } else {
             dismiss()
         }
     }
