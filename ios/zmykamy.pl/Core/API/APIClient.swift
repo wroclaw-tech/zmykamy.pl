@@ -41,6 +41,22 @@ nonisolated final class APIClient: Sendable {
         try await validate(request, upload: data)
     }
 
+    func upload(fileAt fileURL: URL, to url: URL, contentType: String) async throws(APIError) {
+        var request = URLRequest(url: url)
+        request.httpMethod = "PUT"
+        request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+        let urlResponse: URLResponse
+        do {
+            (_, urlResponse) = try await session.upload(for: request, fromFile: fileURL)
+        } catch {
+            throw .network
+        }
+        guard let response = urlResponse as? HTTPURLResponse else { throw .network }
+        guard (200..<300).contains(response.statusCode) else {
+            throw APIError(status: response.statusCode, response: nil)
+        }
+    }
+
     private func perform(
         _ method: String,
         _ path: String,

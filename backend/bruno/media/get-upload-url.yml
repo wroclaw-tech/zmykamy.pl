@@ -1,0 +1,38 @@
+info:
+  name: Get media upload url
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseUrl}}/trips/{{tripId}}/media/upload-url"
+  body:
+    type: json
+    data: |-
+      {
+        "kind": "photo",
+        "contentType": "image/jpeg"
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.body?.key) {
+          bru.setVar("mediaKey", res.body.key);
+          bru.setVar("thumbnailKey", res.body.thumbnailKey);
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Any trip member. `PUT` the file to `uploadUrl` and a JPEG thumbnail to `thumbnailUploadUrl` within 5 minutes; the keys are saved as `mediaKey` and `thumbnailKey`.
+
+  - `kind`: `photo` or `video`
+  - `contentType`: `image/jpeg` for photos, `video/mp4` or `video/quicktime` for videos

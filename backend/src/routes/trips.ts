@@ -2,13 +2,12 @@ import { and, eq, gt, lt, or } from "drizzle-orm";
 import { Hono } from "hono";
 import type { z } from "zod";
 import { db } from "../db";
-import { planPoint, trip, tripInvite, tripMember } from "../db/schema";
+import { media, planPoint, trip, tripInvite, tripMember } from "../db/schema";
 import type { AppEnv } from "../lib/app-env";
 import { getBalancesByTrip, getTripBalances } from "../lib/balances";
 import { ApiError } from "../lib/errors";
 import { generateInviteCode, toInviteSlug, toInviteUrl } from "../lib/invite";
-import { logger } from "../lib/logger";
-import { deleteFile, fileExists, getDownloadUrl, getUploadUrl } from "../lib/storage";
+import { deleteFilesQuietly, fileExists, getDownloadUrl, getUploadUrl } from "../lib/storage";
 import { validate } from "../lib/validation";
 import { requireAuth } from "../middleware/require-auth";
 import {
@@ -140,17 +139,6 @@ const assertUploadedCover = async (tripId: string, key: string) => {
   }
 };
 
-const deleteCover = async (key: string | null) => {
-  if (!key) {
-    return;
-  }
-  try {
-    await deleteFile(key);
-  } catch (error) {
-    logger.warn("Failed to delete trip cover", { key, error });
-  }
-};
-
 export const trips = new Hono<AppEnv>()
   .use(requireAuth)
   .get("/", async (c) => {
@@ -219,7 +207,7 @@ export const trips = new Hono<AppEnv>()
         .where(eq(trip.id, id));
 
       if (coverImageKey !== undefined && coverImageKey !== current.coverImageKey) {
-        await deleteCover(current.coverImageKey);
+        await deleteFilesQuietly([current.coverImageKey]);
       }
       return c.json(await respondWithTrip(id, userId));
     },
@@ -227,8 +215,15 @@ export const trips = new Hono<AppEnv>()
   .delete("/:id", validate("param", tripIdParamSchema), async (c) => {
     const { id } = c.req.valid("param");
     const current = await getOrganizerTrip(id, c.get("user").id);
+    const files = await db.query.media.findMany({
+      where: eq(media.tripId, id),
+      columns: { key: true, thumbnailKey: true },
+    });
     await db.delete(trip).where(eq(trip.id, id));
-    await deleteCover(current.coverImageKey);
+    await deleteFilesQuietly([
+      current.coverImageKey,
+      ...files.flatMap((file) => [file.key, file.thumbnailKey]),
+    ]);
     return c.body(null, 204);
   })
   .post("/:id/cover/upload-url", validate("param", tripIdParamSchema), async (c) => {

@@ -1,0 +1,6 @@
+info:
+  name: media
+  type: folder
+
+request:
+  auth: inherit
