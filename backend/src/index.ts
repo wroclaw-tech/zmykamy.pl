@@ -5,6 +5,7 @@ import { auth } from "./lib/auth";
 import { handleError, handleNotFound } from "./lib/errors";
 import { logger } from "./lib/logger";
 import { invites } from "./routes/invites";
+import { plan } from "./routes/plan";
 import { trips } from "./routes/trips";
 import { universalLinks } from "./routes/universal-links";
 
@@ -17,6 +18,7 @@ app.notFound(handleNotFound);
 app.get("/", (c) => c.text("ok"));
 app.on(["GET", "POST"], "/auth/*", (c) => auth.handler(c.req.raw));
 app.route("/trips", trips);
+app.route("/trips", plan);
 app.route("/invites", invites);
 app.route("/", universalLinks);
 

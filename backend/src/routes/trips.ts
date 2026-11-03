@@ -1,8 +1,8 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, gt, lt, or } from "drizzle-orm";
 import { Hono } from "hono";
 import type { z } from "zod";
 import { db } from "../db";
-import { trip, tripInvite, tripMember } from "../db/schema";
+import { planPoint, trip, tripInvite, tripMember } from "../db/schema";
 import type { AppEnv } from "../lib/app-env";
 import { ApiError } from "../lib/errors";
 import { generateInviteCode, toInviteSlug, toInviteUrl } from "../lib/invite";
@@ -86,7 +86,7 @@ export const toTripResponse = (record: TripWithMembers, userId: string) => {
   };
 };
 
-const getMemberTrip = async (id: string, userId: string) => {
+export const getMemberTrip = async (id: string, userId: string) => {
   const record = await findTrip(id);
   if (!record?.members.some((member) => member.userId === userId)) {
     throw new ApiError(404, "trip_not_found", "Trip not found");
@@ -101,6 +101,23 @@ const getOrganizerTrip = async (id: string, userId: string) => {
     throw new ApiError(403, "forbidden", "Only organizers can manage this trip");
   }
   return record;
+};
+
+const assertNoPointsOutsideRange = async (tripId: string, startDate: string, endDate: string) => {
+  const outside = await db.query.planPoint.findFirst({
+    columns: { id: true },
+    where: and(
+      eq(planPoint.tripId, tripId),
+      or(lt(planPoint.date, startDate), gt(planPoint.date, endDate)),
+    ),
+  });
+  if (outside) {
+    throw new ApiError(
+      409,
+      "plan_points_out_of_range",
+      "Move or delete plan points outside the new dates first",
+    );
+  }
 };
 
 const getCoverKeyPrefix = (tripId: string) => `trips/${tripId}/cover/`;
@@ -162,6 +179,13 @@ export const trips = new Hono<AppEnv>()
 
       if ((fields.startDate ?? current.startDate) > (fields.endDate ?? current.endDate)) {
         throw new ApiError(400, "invalid_date_range", "endDate must not be before startDate");
+      }
+      if (fields.startDate || fields.endDate) {
+        await assertNoPointsOutsideRange(
+          id,
+          fields.startDate ?? current.startDate,
+          fields.endDate ?? current.endDate,
+        );
       }
       if (coverImageKey) {
         await assertUploadedCover(id, coverImageKey);
