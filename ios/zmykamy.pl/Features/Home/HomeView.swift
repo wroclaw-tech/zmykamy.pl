@@ -161,6 +161,9 @@ struct HomeView: View {
     @State private var expenses: ExpensesStore
     @State private var gallery: GalleryStore
     @State private var documents: DocumentsStore
+    @State private var packing: PackingStore
+    @State private var tasks: TasksStore
+    @State private var polls: PollsStore
     @State private var isShowingAccount = false
     @State private var isCreatingTrip = false
     @State private var openTrip: Trip?
@@ -176,6 +179,9 @@ struct HomeView: View {
         _expenses = State(initialValue: ExpensesStore(api: tripsStore.api, trips: tripsStore))
         _gallery = State(initialValue: GalleryStore(api: tripsStore.api))
         _documents = State(initialValue: DocumentsStore(api: tripsStore.api))
+        _packing = State(initialValue: PackingStore(api: tripsStore.api))
+        _tasks = State(initialValue: TasksStore(api: tripsStore.api))
+        _polls = State(initialValue: PollsStore(api: tripsStore.api))
     }
 
     var body: some View {
@@ -226,6 +232,9 @@ struct HomeView: View {
         .environment(expenses)
         .environment(gallery)
         .environment(documents)
+        .environment(packing)
+        .environment(tasks)
+        .environment(polls)
     }
 
     @ViewBuilder

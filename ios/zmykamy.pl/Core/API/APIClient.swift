@@ -100,5 +100,5 @@ nonisolated final class APIClient: Sendable {
         return data
     }
 
-    static let decoder = JSONDecoder()
+    static let decoder = AuthClient.decoder
 }

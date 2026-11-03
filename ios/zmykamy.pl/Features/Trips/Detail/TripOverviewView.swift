@@ -103,29 +103,36 @@ private struct CountdownCard: View {
     }
 }
 
-private struct TripToolTile: View {
+private struct ToolTile<Destination: View>: View {
+    let icon: ImageResource
     let title: String
-    let detail: String
-    let image: ImageResource
+    let subtitle: String?
+    @ViewBuilder let destination: Destination
     @Environment(\.theme) private var theme
 
     var body: some View {
-        HStack(spacing: Spacing.s12) {
-            IconBadge(image: image, foreground: theme.accentStrong, background: theme.accentTint)
-            VStack(alignment: .leading, spacing: 2) {
+        NavigationLink {
+            destination
+        } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                IconBadge(image: icon, foreground: theme.accent, background: theme.accentTint)
+                Spacer(minLength: Spacing.s8)
                 Text(title)
-                    .typography(.bodyEmphasis)
+                    .typography(.calloutEmphasis)
                     .foregroundStyle(.neutralInk)
-                Text(detail)
-                    .typography(.captionRegular)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                Text(subtitle ?? " ")
+                    .typography(.footnote)
                     .foregroundStyle(.neutralGray)
+                    .lineLimit(1)
             }
-            Spacer(minLength: 0)
+            .padding(Spacing.s14)
+            .frame(maxWidth: .infinity, minHeight: 108, alignment: .leading)
+            .background(.neutralWhite, in: .rect(cornerRadius: Radius.lg))
+            .contentShape(.rect(cornerRadius: Radius.lg))
         }
-        .padding(Spacing.s14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.neutralWhite, in: .rect(cornerRadius: Radius.lg))
-        .contentShape(.rect(cornerRadius: Radius.lg))
+        .buttonStyle(.plain)
     }
 }
 
@@ -151,7 +158,7 @@ struct TripOverviewView: View {
                     .padding(.top, -28)
                 tools
                     .padding(.horizontal, Spacing.gutter)
-                    .padding(.top, Spacing.s16)
+                    .padding(.top, Spacing.s12)
             }
             .padding(.bottom, Spacing.s24)
         }
@@ -161,6 +168,7 @@ struct TripOverviewView: View {
             NotesView(trip: trip, user: user)
         }
         .task(id: trip.id) { try? await documents.load(trip) }
+        .task(id: trip.id) { try? await trips.loadProgress(of: trip) }
         .toolbar {
             if trip.isOrganizer {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -194,33 +202,54 @@ struct TripOverviewView: View {
         let pinned = (documents.notes(for: trip) ?? []).filter(\.pinned)
         let documentCount = documents.documents(for: trip)?.count ?? 0
         let noteCount = documents.notes(for: trip)?.count ?? 0
+        let progress = trips.progress[trip.id]
         return VStack(alignment: .leading, spacing: Spacing.s12) {
             if !pinned.isEmpty {
                 PinnedNotesCard(notes: pinned, userID: user.id, isCompact: true) { _ in isShowingNotes = true }
             }
             HStack(spacing: Spacing.s12) {
-                NavigationLink {
+                ToolTile(
+                    icon: .confirmationNumber,
+                    title: "Dokumenty",
+                    subtitle: PolishPlural.form(documentCount, one: "1 plik", few: "\(documentCount) pliki", many: "\(documentCount) plików")
+                ) {
                     DocumentsView(trip: trip, user: user)
-                } label: {
-                    TripToolTile(
-                        title: "Dokumenty",
-                        detail: documentCount == 0 ? "Bilety, rezerwacje" : PolishPlural.form(documentCount, one: "1 plik", few: "\(documentCount) pliki", many: "\(documentCount) plików"),
-                        image: .description
-                    )
                 }
-                .buttonStyle(.plain)
-                NavigationLink {
+                ToolTile(
+                    icon: .luggage,
+                    title: "Pakowanie",
+                    subtitle: progress.map { "\($0.packing.mine.packedCount) z \($0.packing.mine.totalCount)" }
+                ) {
+                    PackingView(trip: trip, user: user)
+                }
+                ToolTile(icon: .howToVote, title: "Głosowania", subtitle: progress.map(pollsSubtitle)) {
+                    PollsView(trip: trip, user: user)
+                }
+            }
+            HStack(spacing: Spacing.s12) {
+                ToolTile(
+                    icon: .checkCircle,
+                    title: "Do zrobienia",
+                    subtitle: progress.map { "\($0.tasks.doneCount) z \($0.tasks.totalCount)" }
+                ) {
+                    TasksView(trip: trip, user: user)
+                }
+                ToolTile(
+                    icon: .eventNote,
+                    title: "Notatki",
+                    subtitle: PolishPlural.form(noteCount, one: "1 notatka", few: "\(noteCount) notatki", many: "\(noteCount) notatek")
+                ) {
                     NotesView(trip: trip, user: user)
-                } label: {
-                    TripToolTile(
-                        title: "Notatki",
-                        detail: noteCount == 0 ? "Kody, Wi‑Fi, numery" : PolishPlural.form(noteCount, one: "1 notatka", few: "\(noteCount) notatki", many: "\(noteCount) notatek"),
-                        image: .eventNote
-                    )
                 }
-                .buttonStyle(.plain)
             }
         }
+    }
+
+    private func pollsSubtitle(_ progress: TripProgress) -> String {
+        if progress.polls.awaitingMyVoteCount > 0 {
+            return "Brak głosu"
+        }
+        return progress.polls.openCount > 0 ? "\(progress.polls.openCount) otwarte" : "Brak otwartych"
     }
 
     private func delete() {
