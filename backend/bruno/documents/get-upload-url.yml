@@ -1,0 +1,35 @@
+info:
+  name: Get document upload url
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseUrl}}/trips/{{tripId}}/documents/upload-url"
+  body:
+    type: json
+    data: |-
+      {
+        "contentType": "application/pdf"
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.body?.key) {
+          bru.setVar("documentKey", res.body.key);
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Any trip member. `PUT` the file to `uploadUrl` within 5 minutes; the key is saved as `documentKey`.
+
+  - `contentType`: `application/pdf`, `image/jpeg` or `image/png`

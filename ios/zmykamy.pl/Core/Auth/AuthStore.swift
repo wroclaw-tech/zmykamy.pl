@@ -128,6 +128,7 @@ final class AuthStore {
 
     private func endSession() {
         store.clear()
+        OfflineCache.clear()
         state = .signedOut
     }
 }

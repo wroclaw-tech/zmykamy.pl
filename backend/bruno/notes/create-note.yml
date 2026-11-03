@@ -1,0 +1,39 @@
+info:
+  name: Create note
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseUrl}}/trips/{{tripId}}/notes"
+  body:
+    type: json
+    data: |-
+      {
+        "title": "Kod do drzwi",
+        "text": "4821#",
+        "pinned": true
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.body?.id) {
+          bru.setVar("noteId", res.body.id);
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Any trip member. The returned id is saved as `noteId`.
+
+  - `title`: 1-80 characters
+  - `text`: up to 4000 characters, defaults to empty
+  - `pinned`: shown at the top of the trip, defaults to `false`

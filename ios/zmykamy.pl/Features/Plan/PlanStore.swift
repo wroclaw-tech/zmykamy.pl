@@ -15,9 +15,20 @@ final class PlanStore {
     }
 
     func load(_ trip: Trip) async throws(APIError) {
-        plans[trip.id] = try await api.call { (client, token) throws(APIError) in
-            try await client.send("GET", "trips/\(trip.id)/plan", token: token)
+        do throws(APIError) {
+            let plan: TripPlan = try await api.call { (client, token) throws(APIError) in
+                try await client.send("GET", "trips/\(trip.id)/plan", token: token)
+            }
+            plans[trip.id] = plan
+            OfflineCache.save(plan, as: cacheName(trip))
+        } catch .network {
+            guard let cached = OfflineCache.load(TripPlan.self, name: cacheName(trip)) else { throw .network }
+            plans[trip.id] = cached
         }
+    }
+
+    private func cacheName(_ trip: Trip) -> String {
+        "trip-\(trip.id)-plan"
     }
 
     func addPoint(_ request: PlanPointRequest, to trip: Trip) async throws(APIError) {
@@ -73,5 +84,6 @@ final class PlanStore {
         mutation(&plan)
         plan.points.sort { ($0.date, $0.time) < ($1.date, $1.time) }
         plans[trip.id] = plan
+        OfflineCache.save(plan, as: cacheName(trip))
     }
 }

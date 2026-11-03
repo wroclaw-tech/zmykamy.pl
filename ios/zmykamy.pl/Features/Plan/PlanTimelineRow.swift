@@ -6,6 +6,8 @@ struct PlanTimelineRow: View {
     let isLast: Bool
     let showsMarker: Bool
     let isEditable: Bool
+    var documents: [TripDocument] = []
+    var onOpenDocument: (TripDocument) -> Void = { _ in }
     let onTap: () -> Void
     @Environment(\.theme) private var theme
 
@@ -18,11 +20,16 @@ struct PlanTimelineRow: View {
                 .frame(width: 46, alignment: .leading)
                 .padding(.top, Spacing.s14)
             marker
-            Button(action: onTap) {
-                card
+            VStack(alignment: .leading, spacing: Spacing.s6) {
+                Button(action: onTap) {
+                    card
+                }
+                .buttonStyle(.plain)
+                .disabled(!isEditable)
+                if !documents.isEmpty {
+                    attachments
+                }
             }
-            .buttonStyle(.plain)
-            .disabled(!isEditable)
             .padding(.bottom, isLast ? 0 : Spacing.s12)
         }
     }
@@ -52,6 +59,31 @@ struct PlanTimelineRow: View {
         }
         .frame(width: 16)
         .frame(maxHeight: .infinity, alignment: .top)
+    }
+
+    private var attachments: some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: Spacing.s6) {
+                ForEach(documents) { document in
+                    Button { onOpenDocument(document) } label: {
+                        HStack(spacing: Spacing.s4) {
+                            Image(.attachFile)
+                                .resizable()
+                                .frame(width: 14, height: 14)
+                            Text(document.title)
+                                .typography(.captionEmphasis)
+                                .lineLimit(1)
+                        }
+                        .foregroundStyle(theme.accentStrong)
+                        .padding(.horizontal, Spacing.s12)
+                        .frame(height: 30)
+                        .background(theme.accentTint, in: .capsule)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .scrollIndicators(.hidden)
     }
 
     private var card: some View {

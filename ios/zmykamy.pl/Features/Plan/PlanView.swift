@@ -1,3 +1,4 @@
+import QuickLook
 import SwiftUI
 
 private enum PlanMode: String, CaseIterable, Identifiable {
@@ -24,6 +25,8 @@ struct PlanView: View {
     let user: AuthUser
 
     @Environment(PlanStore.self) private var plans
+    @Environment(DocumentsStore.self) private var documents
+    @State private var opener = DocumentOpener()
     @Environment(\.theme) private var theme
     @State private var mode = PlanMode.days
     @State private var selectedDay: LocalDate
@@ -67,7 +70,22 @@ struct PlanView: View {
                     Text(loadError ?? "")
                 }
         }
-        .task(id: trip.id) { await load() }
+        .task(id: trip.id) {
+            await load()
+            await documents.loadIfNeeded(trip)
+        }
+        .quickLookPreview($opener.previewURL)
+    }
+
+    private func open(_ document: TripDocument) {
+        Task {
+            do throws(APIError) {
+                try await opener.open(document, using: documents)
+            } catch {
+                loadError = "Nie udało się otworzyć dokumentu. Sprawdź połączenie i spróbuj ponownie."
+                isShowingRefreshError = true
+            }
+        }
     }
 
     @ViewBuilder
@@ -136,6 +154,8 @@ struct PlanView: View {
                         isLast: point.id == points.last?.id,
                         showsMarker: points.count > 1,
                         isEditable: trip.canEdit(authoredBy: point.author, userID: user.id),
+                        documents: documents.documents(attachedTo: point, in: trip),
+                        onOpenDocument: open,
                         onTap: { pointSheet = PointSheet(point: point, date: point.date) }
                     )
                 }

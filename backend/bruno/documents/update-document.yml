@@ -1,0 +1,25 @@
+info:
+  name: Update document
+  type: http
+  seq: 5
+
+http:
+  method: PATCH
+  url: "{{baseUrl}}/trips/{{tripId}}/documents/{{documentId}}"
+  body:
+    type: json
+    data: |-
+      {
+        "planPointId": "{{pointId}}"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  The author or an organizer. Any of `title`, `category`, `icon`, `planPointId`, and `url` for links.
