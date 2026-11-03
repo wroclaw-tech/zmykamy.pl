@@ -78,6 +78,7 @@ struct MediaViewer: View {
                     .frame(width: 44, height: 44)
             }
             .buttonStyle(.glass)
+            .buttonBorderShape(.circle)
             .accessibilityLabel("Zamknij")
             Spacer()
             Button(action: share) {
@@ -87,6 +88,7 @@ struct MediaViewer: View {
                     .frame(width: 44, height: 44)
             }
             .buttonStyle(.glass)
+            .buttonBorderShape(.circle)
             .disabled(isWorking)
             .accessibilityLabel("Udostępnij")
         }
