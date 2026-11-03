@@ -1,0 +1,19 @@
+info:
+  name: Delete payment
+  type: http
+  seq: 7
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/trips/{{tripId}}/settlement/payments/{{paymentId}}"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  The payer, the recipient or an organizer. Undoes a payment and returns the updated settlement.
