@@ -159,6 +159,7 @@ struct HomeView: View {
     @State private var trips: TripsStore
     @State private var plans: PlanStore
     @State private var expenses: ExpensesStore
+    @State private var gallery: GalleryStore
     @State private var isShowingAccount = false
     @State private var isCreatingTrip = false
     @State private var openTrip: Trip?
@@ -172,6 +173,7 @@ struct HomeView: View {
         _trips = State(initialValue: tripsStore)
         _plans = State(initialValue: PlanStore(api: tripsStore.api))
         _expenses = State(initialValue: ExpensesStore(api: tripsStore.api, trips: tripsStore))
+        _gallery = State(initialValue: GalleryStore(api: tripsStore.api))
     }
 
     var body: some View {
@@ -220,6 +222,7 @@ struct HomeView: View {
         .environment(trips)
         .environment(plans)
         .environment(expenses)
+        .environment(gallery)
     }
 
     @ViewBuilder

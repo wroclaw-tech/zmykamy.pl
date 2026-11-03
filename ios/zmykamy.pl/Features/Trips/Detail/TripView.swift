@@ -10,20 +10,6 @@ struct CloseTripButton: ToolbarContent {
     }
 }
 
-private struct ComingSoonTab: View {
-    let title: String
-    @Environment(\.theme) private var theme
-
-    var body: some View {
-        NavigationStack {
-            ContentUnavailableView(title, image: "hourglass_top", description: Text("Ta sekcja pojawi się wkrótce."))
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background { theme.background.ignoresSafeArea() }
-                .toolbar { CloseTripButton() }
-        }
-    }
-}
-
 /// A trip opened from the list, with its own navigation in every tab.
 struct TripView: View {
     let tripID: Trip.ID
@@ -48,7 +34,7 @@ struct TripView: View {
                     ExpensesView(trip: trip, user: user)
                 }
                 Tab("Galeria", image: "tab_photo_library") {
-                    ComingSoonTab(title: "Galeria")
+                    GalleryView(trip: trip, user: user)
                 }
                 Tab("Ekipa", image: "tab_group") {
                     NavigationStack {
