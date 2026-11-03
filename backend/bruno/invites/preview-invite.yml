@@ -1,0 +1,18 @@
+info:
+  name: Preview invite
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{baseUrl}}/invites/{{inviteCode}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Public, no authentication. Returns the trip basics for the join screen. The prefix before the dash is cosmetic, only the part after it is looked up.

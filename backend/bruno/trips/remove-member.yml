@@ -1,0 +1,19 @@
+info:
+  name: Remove member
+  type: http
+  seq: 10
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/trips/{{tripId}}/members/{{memberId}}"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Organizer only. Set the `memberId` variable to the `userId` of a member from "Get trip". The organizer cannot remove themselves.

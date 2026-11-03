@@ -52,8 +52,24 @@ export const tripMember = pgTable(
   ],
 );
 
-export const tripRelations = relations(trip, ({ many }) => ({
+export const tripInvite = pgTable("trip_invite", {
+  tripId: uuid("trip_id")
+    .primaryKey()
+    .references(() => trip.id, { onDelete: "cascade" }),
+  code: text("code").notNull().unique(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const tripRelations = relations(trip, ({ many, one }) => ({
   members: many(tripMember),
+  invite: one(tripInvite),
+}));
+
+export const tripInviteRelations = relations(tripInvite, ({ one }) => ({
+  trip: one(trip, {
+    fields: [tripInvite.tripId],
+    references: [trip.id],
+  }),
 }));
 
 export const tripMemberRelations = relations(tripMember, ({ one }) => ({

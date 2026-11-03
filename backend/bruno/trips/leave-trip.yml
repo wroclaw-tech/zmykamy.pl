@@ -1,0 +1,19 @@
+info:
+  name: Leave trip
+  type: http
+  seq: 9
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/trips/{{tripId}}/members/me"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Participants only. The organizer gets 409 `organizer_cannot_leave` and can only delete the trip.

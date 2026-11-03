@@ -62,6 +62,8 @@ nonisolated struct TripMember: Codable, Equatable, Identifiable, Sendable {
     let name: String
     let image: String?
     let role: TripRole
+    /// Minor units of the trip currency; positive when the member is owed money.
+    let balance: Int
 
     var id: String { userId }
 }
@@ -117,4 +119,24 @@ nonisolated struct TripCoverRequest: Encodable, Sendable {
 nonisolated struct CoverUploadResponse: Decodable, Sendable {
     let uploadUrl: URL
     let key: String
+}
+
+nonisolated struct TripInvite: Decodable, Equatable, Sendable {
+    let code: String
+    let url: URL
+}
+
+nonisolated struct InvitePreview: Decodable, Equatable, Sendable {
+    struct Destination: Decodable, Equatable, Sendable {
+        let name: String
+        let country: String?
+    }
+
+    let tripId: String
+    let name: String
+    let destination: Destination?
+    let startDate: LocalDate
+    let endDate: LocalDate
+    let organizerName: String?
+    let memberCount: Int
 }

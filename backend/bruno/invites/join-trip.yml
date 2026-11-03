@@ -1,0 +1,19 @@
+info:
+  name: Join trip
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseUrl}}/invites/{{inviteCode}}/join"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Adds the signed-in user as a participant and returns the trip. Joining a trip you already belong to returns it unchanged.

@@ -1,15 +1,21 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import type { z } from "zod";
 import { db } from "../db";
-import { trip, tripMember } from "../db/schema";
+import { trip, tripInvite, tripMember } from "../db/schema";
 import type { AppEnv } from "../lib/app-env";
 import { ApiError } from "../lib/errors";
+import { generateInviteCode, toInviteSlug, toInviteUrl } from "../lib/invite";
 import { logger } from "../lib/logger";
 import { deleteFile, fileExists, getDownloadUrl, getUploadUrl } from "../lib/storage";
 import { validate } from "../lib/validation";
 import { requireAuth } from "../middleware/require-auth";
-import { createTripSchema, tripIdParamSchema, updateTripSchema } from "../schemas/trip";
+import {
+  createTripSchema,
+  tripIdParamSchema,
+  tripMemberParamSchema,
+  updateTripSchema,
+} from "../schemas/trip";
 
 const COVER_CONTENT_TYPE = "image/jpeg";
 
@@ -18,13 +24,29 @@ type TripRole = (typeof tripMember.$inferSelect)["role"];
 
 const ROLE_ORDER: Record<TripRole, number> = { organizer: 0, participant: 1 };
 
-const findTrip = (id: string) =>
+export const findTrip = (id: string) =>
   db.query.trip.findFirst({
     where: eq(trip.id, id),
     with: { members: { with: { user: true } } },
   });
 
 type TripWithMembers = NonNullable<Awaited<ReturnType<typeof findTrip>>>;
+
+const getMemberBalance = () => 0;
+
+const getInviteLabel = (record: { name: string; destinationName: string | null }) =>
+  record.destinationName ?? record.name;
+
+const toInviteResponse = (record: TripWithMembers, code: string) => ({
+  code: toInviteSlug(getInviteLabel(record), code),
+  url: toInviteUrl(getInviteLabel(record), code),
+});
+
+const getOrCreateInviteCode = async (tripId: string) => {
+  await db.insert(tripInvite).values({ tripId, code: generateInviteCode() }).onConflictDoNothing();
+  const invite = await db.query.tripInvite.findFirst({ where: eq(tripInvite.tripId, tripId) });
+  return invite!.code;
+};
 
 const toDestinationColumns = (destination: Destination) => ({
   destinationName: destination?.name ?? null,
@@ -33,7 +55,7 @@ const toDestinationColumns = (destination: Destination) => ({
   destinationLongitude: destination?.longitude ?? null,
 });
 
-const toTripResponse = (record: TripWithMembers, userId: string) => {
+export const toTripResponse = (record: TripWithMembers, userId: string) => {
   const members = record.members.toSorted(
     (a, b) =>
       ROLE_ORDER[a.role] - ROLE_ORDER[b.role] || a.joinedAt.getTime() - b.joinedAt.getTime(),
@@ -59,6 +81,7 @@ const toTripResponse = (record: TripWithMembers, userId: string) => {
       name: member.user.name,
       image: member.user.image,
       role: member.role,
+      balance: getMemberBalance(),
     })),
   };
 };
@@ -171,4 +194,45 @@ export const trips = new Hono<AppEnv>()
     await getOrganizerTrip(id, c.get("user").id);
     const key = `${getCoverKeyPrefix(id)}${crypto.randomUUID()}.jpg`;
     return c.json({ uploadUrl: getUploadUrl(key, COVER_CONTENT_TYPE), key });
+  })
+  .get("/:id/invite", validate("param", tripIdParamSchema), async (c) => {
+    const { id } = c.req.valid("param");
+    const record = await getMemberTrip(id, c.get("user").id);
+    return c.json(toInviteResponse(record, await getOrCreateInviteCode(id)));
+  })
+  .post("/:id/invite/regenerate", validate("param", tripIdParamSchema), async (c) => {
+    const { id } = c.req.valid("param");
+    const record = await getOrganizerTrip(id, c.get("user").id);
+    const code = generateInviteCode();
+    await db
+      .insert(tripInvite)
+      .values({ tripId: id, code })
+      .onConflictDoUpdate({ target: tripInvite.tripId, set: { code, createdAt: new Date() } });
+    return c.json(toInviteResponse(record, code));
+  })
+  .delete("/:id/members/me", validate("param", tripIdParamSchema), async (c) => {
+    const { id } = c.req.valid("param");
+    const userId = c.get("user").id;
+    const record = await getMemberTrip(id, userId);
+    if (record.members.find((member) => member.userId === userId)?.role === "organizer") {
+      throw new ApiError(409, "organizer_cannot_leave", "The organizer can only delete the trip");
+    }
+    await db
+      .delete(tripMember)
+      .where(and(eq(tripMember.tripId, id), eq(tripMember.userId, userId)));
+    return c.body(null, 204);
+  })
+  .delete("/:id/members/:userId", validate("param", tripMemberParamSchema), async (c) => {
+    const { id, userId } = c.req.valid("param");
+    const record = await getOrganizerTrip(id, c.get("user").id);
+    if (userId === c.get("user").id) {
+      throw new ApiError(400, "cannot_remove_self", "The organizer cannot be removed");
+    }
+    if (!record.members.some((member) => member.userId === userId)) {
+      throw new ApiError(404, "member_not_found", "Member not found");
+    }
+    await db
+      .delete(tripMember)
+      .where(and(eq(tripMember.tripId, id), eq(tripMember.userId, userId)));
+    return c.body(null, 204);
   });

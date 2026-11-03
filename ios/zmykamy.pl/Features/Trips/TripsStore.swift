@@ -69,6 +69,51 @@ final class TripsStore {
         trips.removeAll { $0.id == trip.id }
     }
 
+    func invite(for trip: Trip) async throws(APIError) -> TripInvite {
+        try await call { (client, token) throws(APIError) in
+            try await client.send("GET", "trips/\(trip.id)/invite", token: token)
+        }
+    }
+
+    func regenerateInvite(of trip: Trip) async throws(APIError) -> TripInvite {
+        try await call { (client, token) throws(APIError) in
+            try await client.send("POST", "trips/\(trip.id)/invite/regenerate", token: token)
+        }
+    }
+
+    func remove(_ member: TripMember, from trip: Trip) async throws(APIError) {
+        try await call { (client, token) throws(APIError) in
+            try await client.send("DELETE", "trips/\(trip.id)/members/\(member.userId)", token: token)
+        }
+        let updated: Trip = try await call { (client, token) throws(APIError) in
+            try await client.send("GET", "trips/\(trip.id)", token: token)
+        }
+        replace(updated)
+    }
+
+    func leave(_ trip: Trip) async throws(APIError) {
+        try await call { (client, token) throws(APIError) in
+            try await client.send("DELETE", "trips/\(trip.id)/members/me", token: token)
+        }
+        trips.removeAll { $0.id == trip.id }
+    }
+
+    func preview(inviteCode code: String) async throws(APIError) -> InvitePreview {
+        try await client.send("GET", "invites/\(code)")
+    }
+
+    func join(inviteCode code: String) async throws(APIError) -> Trip {
+        let joined: Trip = try await call { (client, token) throws(APIError) in
+            try await client.send("POST", "invites/\(code)/join", token: token)
+        }
+        if trips.contains(where: { $0.id == joined.id }) {
+            replace(joined)
+        } else {
+            trips.append(joined)
+        }
+        return joined
+    }
+
     private func replace(_ trip: Trip) {
         guard let index = trips.firstIndex(where: { $0.id == trip.id }) else { return }
         trips[index] = trip

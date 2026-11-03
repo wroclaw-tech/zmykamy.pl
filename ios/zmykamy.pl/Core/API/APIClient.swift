@@ -14,7 +14,7 @@ nonisolated final class APIClient: Sendable {
         _ method: String,
         _ path: String,
         body: (some Encodable & Sendable)? = String?.none,
-        token: String
+        token: String? = nil
     ) async throws(APIError) -> Response {
         let data = try await perform(method, path, body: body, token: token)
         do {
@@ -28,7 +28,7 @@ nonisolated final class APIClient: Sendable {
         _ method: String,
         _ path: String,
         body: (some Encodable & Sendable)? = String?.none,
-        token: String
+        token: String? = nil
     ) async throws(APIError) {
         _ = try await perform(method, path, body: body, token: token)
     }
@@ -45,12 +45,14 @@ nonisolated final class APIClient: Sendable {
         _ method: String,
         _ path: String,
         body: (some Encodable & Sendable)?,
-        token: String
+        token: String?
     ) async throws(APIError) -> Data {
         var request = URLRequest(url: baseURL.appending(path: path))
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        if let token {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
         if let body {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             do {
