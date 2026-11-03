@@ -43,6 +43,13 @@
       "when": 1793719401566,
       "tag": "0005_cynical_madame_hydra",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793728410050,
+      "tag": "0006_aspiring_doctor_spectrum",
+      "breakpoints": true
     }
   ]
 }

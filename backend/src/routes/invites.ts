@@ -8,7 +8,7 @@ import { parseInviteCode } from "../lib/invite";
 import { validate } from "../lib/validation";
 import { requireAuth } from "../middleware/require-auth";
 import { inviteSlugParamSchema } from "../schemas/trip";
-import { findTrip, toTripResponse } from "./trips";
+import { findTrip, respondWithTrip } from "./trips";
 
 export const findInvitedTrip = async (slug: string) => {
   const invite = await db.query.tripInvite.findFirst({
@@ -44,5 +44,5 @@ export const invites = new Hono<AppEnv>()
       .insert(tripMember)
       .values({ tripId: record.id, userId, role: "participant" })
       .onConflictDoNothing();
-    return c.json(toTripResponse((await findTrip(record.id))!, userId));
+    return c.json(await respondWithTrip(record.id, userId));
   });
