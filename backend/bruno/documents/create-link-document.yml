@@ -1,0 +1,36 @@
+info:
+  name: Create link document
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{baseUrl}}/trips/{{tripId}}/documents"
+  body:
+    type: json
+    data: |-
+      {
+        "title": "Mieszkanie w Alfamie",
+        "category": "reservation",
+        "kind": "link",
+        "url": "https://example.com/booking/123"
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.body?.id) {
+          bru.setVar("documentId", res.body.id);
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Any trip member. `url` must be http or https. The returned id is saved as `documentId`.

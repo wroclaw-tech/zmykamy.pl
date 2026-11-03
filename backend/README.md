@@ -99,6 +99,27 @@ Photos and videos are uploaded straight to storage; the app makes the thumbnail 
 
 Deleting a trip also deletes its media files.
 
+### Documents
+
+Shared tickets, reservations and other documents, either a file (PDF, JPEG or PNG) or a link. Any member can add one; changing or deleting it requires being its author or an organizer.
+
+- `POST /trips/:id/documents/upload-url` - `{ contentType }` (`application/pdf`, `image/jpeg`, `image/png`); returns `{ key, uploadUrl }`, `PUT` the file within 5 minutes
+- `POST /trips/:id/documents` - `{ title, category, icon?, planPointId?, kind: "file", key, contentType }` or `{ title, category, icon?, planPointId?, kind: "link", url }`; `category` is `ticket`, `reservation` or `other`, `icon` defaults by category. Returns `201`
+- `GET /trips/:id/documents` - `{ documents }`, oldest first
+- `PATCH /trips/:id/documents/:documentId` - any of `title`, `category`, `icon`, `planPointId`, and `url` for links
+- `DELETE /trips/:id/documents/:documentId` - deletes the file too, returns `204`
+
+A document is returned as `{ id, title, category, icon, kind, url, fileUrl, contentType, planPointId, author, createdAt, updatedAt }`; `fileUrl` is presigned for an hour. Deleting a plan point detaches its documents.
+
+### Notes
+
+- `GET /trips/:id/notes` - `{ notes }`, pinned first, then recently updated
+- `POST /trips/:id/notes` - `{ title, text?, pinned? }`; pinned notes are shown at the top of the trip. Returns `201`
+- `PATCH /trips/:id/notes/:noteId` - any of the `POST` fields; the author or an organizer
+- `DELETE /trips/:id/notes/:noteId` - the author or an organizer, returns `204`
+
+A note is returned as `{ id, title, text, pinned, author, createdAt, updatedAt }`.
+
 ## Testing
 
 ```bash

@@ -1,0 +1,42 @@
+info:
+  name: Create file document
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{baseUrl}}/trips/{{tripId}}/documents"
+  body:
+    type: json
+    data: |-
+      {
+        "title": "Karty pokładowe WAW → LIS",
+        "category": "ticket",
+        "icon": "flight_takeoff",
+        "kind": "file",
+        "key": "{{documentKey}}",
+        "contentType": "application/pdf"
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.body?.id) {
+          bru.setVar("documentId", res.body.id);
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Any trip member, after uploading the file. The returned id is saved as `documentId`.
+
+  - `category`: `ticket`, `reservation` or `other`
+  - `icon`: one of the plan icons, defaults by category
+  - `planPointId`: optional plan point of the same trip
