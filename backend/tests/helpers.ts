@@ -1,5 +1,5 @@
-import app from "../index";
-import { auth } from "../lib/auth";
+import app from "../src/index";
+import { auth } from "../src/lib/auth";
 
 export const lisbon = {
   name: "Lizbona",

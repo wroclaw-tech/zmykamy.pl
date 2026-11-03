@@ -1,8 +1,8 @@
 import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
-import { db } from "../db";
-import { trip, tripMember, user } from "../db/schema";
-import app from "../index";
-import { createTrip, createUser, request, type TestUser } from "./test-helpers";
+import { db } from "../../src/db";
+import { trip, tripMember, user } from "../../src/db/schema";
+import app from "../../src/index";
+import { createTrip, createUser, request, type TestUser } from "../helpers";
 
 beforeAll(() => {
   if (!process.env.DATABASE_URL?.endsWith("_test")) {
