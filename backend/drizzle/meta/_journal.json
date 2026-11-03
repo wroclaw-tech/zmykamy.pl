@@ -64,6 +64,13 @@
       "when": 1793732573395,
       "tag": "0008_magenta_mimic",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793786734018,
+      "tag": "0009_free_yellow_claw",
+      "breakpoints": true
     }
   ]
 }

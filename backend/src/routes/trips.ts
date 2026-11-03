@@ -1,13 +1,25 @@
-import { and, eq, gt, lt, or } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull, lt, or } from "drizzle-orm";
 import { Hono } from "hono";
 import type { z } from "zod";
 import { db } from "../db";
-import { media, planPoint, trip, tripDocument, tripInvite, tripMember } from "../db/schema";
+import {
+  media,
+  packingItem,
+  planPoint,
+  poll,
+  pollVote,
+  trip,
+  tripDocument,
+  tripInvite,
+  tripMember,
+  tripTask,
+} from "../db/schema";
 import type { AppEnv } from "../lib/app-env";
 import { getBalancesByTrip, getTripBalances } from "../lib/balances";
 import { ApiError } from "../lib/errors";
 import { generateInviteCode, toInviteSlug, toInviteUrl } from "../lib/invite";
 import { deleteFilesQuietly, fileExists, getDownloadUrl, getUploadUrl } from "../lib/storage";
+import { getTripProgress } from "../lib/trip-progress";
 import { validate } from "../lib/validation";
 import { requireAuth } from "../middleware/require-auth";
 import {
@@ -105,6 +117,31 @@ const assertSettled = async (tripId: string, userId: string) => {
   }
 };
 
+const removeTripMember = (tripId: string, userId: string) =>
+  db.transaction(async (tx) => {
+    await tx
+      .delete(tripMember)
+      .where(and(eq(tripMember.tripId, tripId), eq(tripMember.userId, userId)));
+    await tx
+      .delete(packingItem)
+      .where(and(eq(packingItem.tripId, tripId), eq(packingItem.ownerId, userId)));
+    await tx
+      .update(packingItem)
+      .set({ assigneeId: null })
+      .where(and(eq(packingItem.tripId, tripId), eq(packingItem.assigneeId, userId)));
+    await tx
+      .update(tripTask)
+      .set({ assigneeId: null })
+      .where(and(eq(tripTask.tripId, tripId), eq(tripTask.assigneeId, userId)));
+    const unresolvedPollIds = tx
+      .select({ id: poll.id })
+      .from(poll)
+      .where(and(eq(poll.tripId, tripId), isNull(poll.resolvedAt)));
+    await tx
+      .delete(pollVote)
+      .where(and(eq(pollVote.userId, userId), inArray(pollVote.pollId, unresolvedPollIds)));
+  });
+
 const getOrganizerTrip = async (id: string, userId: string) => {
   const record = await getMemberTrip(id, userId);
   const role = record.members.find((member) => member.userId === userId)?.role;
@@ -171,7 +208,10 @@ export const trips = new Hono<AppEnv>()
     const userId = c.get("user").id;
     const { id } = c.req.valid("param");
     const record = await getMemberTrip(id, userId);
-    return c.json(toTripResponse(record, userId, await getTripBalances(id)));
+    return c.json({
+      ...toTripResponse(record, userId, await getTripBalances(id)),
+      progress: await getTripProgress(id, userId),
+    });
   })
   .patch(
     "/:id",
@@ -262,9 +302,7 @@ export const trips = new Hono<AppEnv>()
       throw new ApiError(409, "organizer_cannot_leave", "The organizer can only delete the trip");
     }
     await assertSettled(id, userId);
-    await db
-      .delete(tripMember)
-      .where(and(eq(tripMember.tripId, id), eq(tripMember.userId, userId)));
+    await removeTripMember(id, userId);
     return c.body(null, 204);
   })
   .delete("/:id/members/:userId", validate("param", tripMemberParamSchema), async (c) => {
@@ -277,8 +315,6 @@ export const trips = new Hono<AppEnv>()
       throw new ApiError(404, "member_not_found", "Member not found");
     }
     await assertSettled(id, userId);
-    await db
-      .delete(tripMember)
-      .where(and(eq(tripMember.tripId, id), eq(tripMember.userId, userId)));
+    await removeTripMember(id, userId);
     return c.body(null, 204);
   });

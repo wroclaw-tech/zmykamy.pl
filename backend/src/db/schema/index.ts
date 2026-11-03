@@ -2,5 +2,8 @@ export * from "./auth";
 export * from "./documents";
 export * from "./expenses";
 export * from "./media";
+export * from "./packing";
 export * from "./plan";
+export * from "./polls";
+export * from "./tasks";
 export * from "./trips";

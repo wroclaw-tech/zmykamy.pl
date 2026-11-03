@@ -120,6 +120,59 @@ A document is returned as `{ id, title, category, icon, kind, url, fileUrl, cont
 
 A note is returned as `{ id, title, text, pinned, author, createdAt, updatedAt }`.
 
+`GET /trips/:id` also returns `progress`:
+
+- `packing.mine`, `packing.shared` — `{ packedCount, totalCount }` for the user's own items and the shared list
+- `tasks` — `{ doneCount, totalCount }`
+- `polls` — `{ openCount, awaitingMyVoteCount }`
+
+When a member leaves or is removed, their personal packing items and votes in unresolved polls are deleted, and they are unassigned from shared items and tasks.
+
+### Packing
+
+Any member can manage shared items; personal items are visible to and editable by their author only (others get `404`).
+
+- `GET /trips/:id/packing` — the user's personal items and the shared list
+- `POST /trips/:id/packing` — returns `201`:
+  - `scope` — `personal` ("Moje rzeczy") or `shared`
+  - `name` — 1-80 characters
+  - `assigneeId` — trip member responsible for a shared item, or `null`; personal items can't be assigned
+- `PATCH /trips/:id/packing/:itemId` — any of `name`, `assigneeId`, `isPacked`
+- `DELETE /trips/:id/packing/:itemId` — returns `204`
+
+An item is returned as `{ id, scope, name, assigneeId, isPacked, createdBy, createdAt }`.
+
+### Tasks
+
+The pre-trip to-do list; any member can manage tasks.
+
+- `GET /trips/:id/tasks` — sorted by `dueDate`, tasks without one last
+- `POST /trips/:id/tasks` — returns `201`:
+  - `title` — 1-120 characters
+  - `assigneeId` — trip member responsible, or `null`
+  - `dueDate` — `YYYY-MM-DD`, or `null`
+- `PATCH /trips/:id/tasks/:taskId` — any of `title`, `assigneeId`, `dueDate`, `isDone`; `isDone` sets or clears `completedAt`
+- `DELETE /trips/:id/tasks/:taskId` — returns `204`
+
+A task is returned as `{ id, title, assigneeId, dueDate, isDone, completedAt, createdBy, createdAt }`.
+
+### Polls
+
+Any member can create polls and vote. Resolving and deleting a poll requires being its author or an organizer, others get `403`.
+
+- `GET /trips/:id/polls` — newest first
+- `POST /trips/:id/polls` — returns `201`:
+  - `question` — 1-120 characters
+  - `options` — 2-10 of `{ name, description }`; `name` 1-80 characters, `description` 1-120 characters or `null`
+  - `closesAt` — ISO 8601 date-time in the future, or `null` for no deadline
+- `GET /trips/:id/polls/:pollId` — a single poll
+- `DELETE /trips/:id/polls/:pollId` — returns `204`
+- `PUT /trips/:id/polls/:pollId/vote` — `{ optionId }`; one vote per member, voting again moves it. `409 poll_closed` after `closesAt` or once resolved
+- `DELETE /trips/:id/polls/:pollId/vote` — withdraw the vote
+- `POST /trips/:id/polls/:pollId/resolve` — `{ optionId?, planDate? }`; `optionId` defaults to the option with the most votes (`409 poll_tied` when there's no single leader), `planDate` (`YYYY-MM-DD` within the trip dates, or `null`) is the plan day the result goes to. `409 poll_already_resolved` when resolved twice
+
+A poll is returned as `{ id, question, status, createdBy, closesAt, createdAt, resolvedAt, winningOptionId, planDate, myOptionId, voterCount, options: [{ id, name, description, voteCount, voterIds }] }`. `status` is `open`, `closed` (past `closesAt`, waiting to be resolved) or `resolved`. Vote endpoints and resolve return the updated poll.
+
 ## Testing
 
 ```bash
