@@ -23,6 +23,7 @@ struct DocumentsView: View {
             .background { theme.background.ignoresSafeArea() }
             .navigationTitle("Dokumenty")
             .navigationSubtitle(trip.name)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Dodaj dokument", image: .addRounded) { sheet = DocumentSheet() }
@@ -141,6 +142,21 @@ final class DocumentOpener {
     var previewURL: URL?
     private(set) var loadingID: String?
 
+    private static func namedCopy(of url: URL, for document: TripDocument) -> URL? {
+        let name = document.title
+            .components(separatedBy: CharacterSet(charactersIn: "/\\:?%*|\"<>"))
+            .joined(separator: "-")
+            .trimmingCharacters(in: .whitespaces)
+        let folder = FileManager.default.temporaryDirectory.appending(path: "documents/\(document.id)", directoryHint: .isDirectory)
+        let destination = folder.appending(path: "\(name.isEmpty ? "Dokument" : name).\(document.fileExtension)")
+        try? FileManager.default.removeItem(at: folder)
+        guard (try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)) != nil,
+              (try? FileManager.default.copyItem(at: url, to: destination)) != nil else {
+            return nil
+        }
+        return destination
+    }
+
     func open(_ document: TripDocument, using store: DocumentsStore) async throws(APIError) {
         switch document.kind {
         case .link:
@@ -150,7 +166,8 @@ final class DocumentOpener {
         case .file:
             loadingID = document.id
             defer { loadingID = nil }
-            previewURL = try await store.localFile(for: document)
+            let local = try await store.localFile(for: document)
+            previewURL = Self.namedCopy(of: local, for: document) ?? local
         }
     }
 }

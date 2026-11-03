@@ -122,7 +122,7 @@ final class DocumentsStore {
 
     func localFile(for document: TripDocument) async throws(APIError) -> URL {
         let cached = OfflineCache.fileURL(named: document.offlineFileName)
-        if FileManager.default.fileExists(atPath: cached.path()) {
+        if FileManager.default.fileExists(atPath: cached.path(percentEncoded: false)) {
             return cached
         }
         guard let remote = document.fileUrl else { throw .notFound }
@@ -169,7 +169,7 @@ final class DocumentsStore {
 
     private func refreshDownloaded(_ trip: Trip) {
         for document in documents[trip.id] ?? [] where document.kind == .file {
-            if FileManager.default.fileExists(atPath: OfflineCache.fileURL(named: document.offlineFileName).path()) {
+            if FileManager.default.fileExists(atPath: OfflineCache.fileURL(named: document.offlineFileName).path(percentEncoded: false)) {
                 downloadedFiles.insert(document.offlineFileName)
             }
         }

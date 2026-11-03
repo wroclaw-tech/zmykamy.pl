@@ -18,6 +18,7 @@ struct NotesView: View {
             .background { theme.background.ignoresSafeArea() }
             .navigationTitle("Notatki")
             .navigationSubtitle(trip.name)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Nowa notatka", image: .addRounded) { sheet = NoteSheet() }
