@@ -1,0 +1,43 @@
+info:
+  name: Create media
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{baseUrl}}/trips/{{tripId}}/media"
+  body:
+    type: json
+    data: |-
+      {
+        "kind": "photo",
+        "contentType": "image/jpeg",
+        "key": "{{mediaKey}}",
+        "thumbnailKey": "{{thumbnailKey}}",
+        "width": 4032,
+        "height": 3024,
+        "takenAt": "2027-05-14T10:00:00+01:00"
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.body?.id) {
+          bru.setVar("mediaId", res.body.id);
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Any trip member, after uploading both files. The returned id is saved as `mediaId`.
+
+  - `width`, `height`: pixels of the original
+  - `durationSeconds`: for videos, optional
+  - `takenAt`: ISO date-time with offset, when the photo or video was taken
