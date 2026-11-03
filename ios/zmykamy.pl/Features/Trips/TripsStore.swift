@@ -62,6 +62,13 @@ final class TripsStore {
         replace(updated)
     }
 
+    func reload(_ tripID: Trip.ID) async throws(APIError) {
+        let updated: Trip = try await call { (client, token) throws(APIError) in
+            try await client.send("GET", "trips/\(tripID)", token: token)
+        }
+        replace(updated)
+    }
+
     func delete(_ trip: Trip) async throws(APIError) {
         try await call { (client, token) throws(APIError) in
             try await client.send("DELETE", "trips/\(trip.id)", token: token)

@@ -45,7 +45,7 @@ struct TripView: View {
                     PlanView(trip: trip, user: user)
                 }
                 Tab("Wydatki", image: "tab_payments") {
-                    ComingSoonTab(title: "Wydatki")
+                    ExpensesView(trip: trip, user: user)
                 }
                 Tab("Galeria", image: "tab_photo_library") {
                     ComingSoonTab(title: "Galeria")

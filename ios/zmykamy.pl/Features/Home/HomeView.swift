@@ -158,6 +158,7 @@ struct HomeView: View {
     @Environment(InviteLinkRouter.self) private var inviteRouter
     @State private var trips: TripsStore
     @State private var plans: PlanStore
+    @State private var expenses: ExpensesStore
     @State private var isShowingAccount = false
     @State private var isCreatingTrip = false
     @State private var openTrip: Trip?
@@ -170,6 +171,7 @@ struct HomeView: View {
         let tripsStore = TripsStore(auth: auth)
         _trips = State(initialValue: tripsStore)
         _plans = State(initialValue: PlanStore(api: tripsStore.api))
+        _expenses = State(initialValue: ExpensesStore(api: tripsStore.api, trips: tripsStore))
     }
 
     var body: some View {
@@ -217,6 +219,7 @@ struct HomeView: View {
         }
         .environment(trips)
         .environment(plans)
+        .environment(expenses)
     }
 
     @ViewBuilder
