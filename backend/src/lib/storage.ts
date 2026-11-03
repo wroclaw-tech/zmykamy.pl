@@ -1,4 +1,5 @@
 import { S3Client } from "bun";
+import { logger } from "./logger";
 
 const UPLOAD_URL_TTL_SECONDS = 5 * 60;
 const DOWNLOAD_URL_TTL_SECONDS = 60 * 60;
@@ -20,3 +21,17 @@ export const getDownloadUrl = (key: string) =>
 export const fileExists = (key: string) => client.exists(key);
 
 export const deleteFile = (key: string) => client.delete(key);
+
+export const deleteFilesQuietly = async (keys: (string | null)[]) => {
+  await Promise.all(
+    keys
+      .filter((key): key is string => Boolean(key))
+      .map(async (key) => {
+        try {
+          await deleteFile(key);
+        } catch (error) {
+          logger.warn("Failed to delete file", { key, error });
+        }
+      }),
+  );
+};
