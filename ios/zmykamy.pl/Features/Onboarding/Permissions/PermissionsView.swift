@@ -93,11 +93,7 @@ private struct NotificationPreview: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            Text("z.")
-                .typography(Typography(size: 17, weight: .heavy, tracking: -0.5))
-                .foregroundStyle(.neutralWhite)
-                .frame(width: 38, height: 38)
-                .background(theme.accent, in: .rect(cornerRadius: 10))
+            AppMark(size: 38)
 
             VStack(alignment: .leading, spacing: 1) {
                 HStack {
