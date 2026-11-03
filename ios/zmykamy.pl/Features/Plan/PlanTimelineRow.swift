@@ -4,6 +4,7 @@ import SwiftUI
 struct PlanTimelineRow: View {
     let point: PlanPoint
     let isLast: Bool
+    let showsMarker: Bool
     let isEditable: Bool
     let onTap: () -> Void
     @Environment(\.theme) private var theme
@@ -26,26 +27,31 @@ struct PlanTimelineRow: View {
         }
     }
 
+    private static let dotTopInset: CGFloat = 15
+
     private var marker: some View {
         ZStack(alignment: .top) {
-            if !isLast {
-                Rectangle()
-                    .fill(theme.accent.opacity(0.25))
-                    .frame(width: 2)
-                    .padding(.top, 26)
-            }
-            Circle()
-                .fill(theme.accentTint)
-                .frame(width: 16, height: 16)
-                .overlay {
-                    Circle()
-                        .fill(theme.accent)
-                        .frame(width: 10, height: 10)
+            if showsMarker {
+                if !isLast {
+                    Rectangle()
+                        .fill(theme.accent.opacity(0.25))
+                        .frame(width: 2)
+                        .padding(.top, Self.dotTopInset + 11)
+                        .padding(.bottom, -Self.dotTopInset)
                 }
-                .padding(.top, 15)
+                Circle()
+                    .fill(theme.accentTint)
+                    .frame(width: 16, height: 16)
+                    .overlay {
+                        Circle()
+                            .fill(theme.accent)
+                            .frame(width: 10, height: 10)
+                    }
+                    .padding(.top, Self.dotTopInset)
+            }
         }
         .frame(width: 16)
-        .frame(maxHeight: .infinity)
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 
     private var card: some View {

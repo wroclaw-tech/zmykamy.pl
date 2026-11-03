@@ -134,6 +134,7 @@ struct PlanView: View {
                     PlanTimelineRow(
                         point: point,
                         isLast: point.id == points.last?.id,
+                        showsMarker: points.count > 1,
                         isEditable: trip.canEdit(authoredBy: point.author, userID: user.id),
                         onTap: { pointSheet = PointSheet(point: point, date: point.date) }
                     )
