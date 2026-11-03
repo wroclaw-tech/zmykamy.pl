@@ -73,7 +73,7 @@ struct SettlementView: View {
                 if let first = counterparts.first {
                     HStack(spacing: Spacing.s6) {
                         PersonAvatar(userID: first.userId, name: first.name, size: 20)
-                        Text(counterpartLabel(counterparts, isOutgoing: !outgoing.isEmpty))
+                        Text(counterparts.count == 1 ? first.name : PolishPlural.people(counterparts.count))
                             .typography(.footnote)
                             .fontWeight(.semibold)
                             .foregroundStyle(.neutralWhite)
@@ -96,7 +96,7 @@ struct SettlementView: View {
             if !outgoing.isEmpty {
                 HStack(spacing: Spacing.s8) {
                     Button { isShowingPayment = true } label: {
-                        Label("Zapłać", image: .payments)
+                        heroButtonLabel("Zapłać", image: .payments)
                             .typography(.headline)
                             .foregroundStyle(theme.accentStrong)
                             .frame(maxWidth: .infinity)
@@ -105,7 +105,7 @@ struct SettlementView: View {
                     }
                     .buttonStyle(.plain)
                     Button { isConfirmingPaid = true } label: {
-                        Label("Oznacz jako opłacone", image: .checkCircle)
+                        heroButtonLabel("Oznacz jako opłacone", image: .checkCircle)
                             .typography(.subheadEmphasis)
                             .foregroundStyle(.neutralWhite)
                             .lineLimit(1)
@@ -127,9 +127,14 @@ struct SettlementView: View {
         .shadow(color: theme.accent.opacity(0.3), radius: 16, y: 8)
     }
 
-    private func counterpartLabel(_ people: [ExpensePerson], isOutgoing: Bool) -> String {
-        let prefix = isOutgoing ? "dla" : "od"
-        return people.count == 1 ? "\(prefix) \(people[0].name)" : "\(prefix) \(people.count) os."
+    private func heroButtonLabel(_ title: String, image: ImageResource) -> some View {
+        HStack(spacing: Spacing.s6) {
+            Image(image)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 18, height: 18)
+            Text(title)
+        }
     }
 
     private func heroTile(title: String, value: Int) -> some View {

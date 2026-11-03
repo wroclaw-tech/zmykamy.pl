@@ -107,12 +107,10 @@ struct ExpensesView: View {
 
             ListCard(separatorInset: Spacing.s14) {
                 ForEach(day.expenses) { expense in
-                    let isEditable = trip.isOrganizer || expense.author?.userId == user.id
                     Button { sheet = ExpenseSheet(expense: expense) } label: {
                         ExpenseRow(expense: expense, members: trip.members, currency: trip.currency, userID: user.id)
                     }
                     .buttonStyle(.plain)
-                    .disabled(!isEditable)
                 }
             }
         }

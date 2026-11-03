@@ -42,6 +42,14 @@ struct ExpenseFormView: View {
         user.calendar
     }
 
+    private var isEditable: Bool {
+        expense == nil || trip.isOrganizer || expense?.author?.userId == user.id
+    }
+
+    private var members: [TripMember] {
+        trip.members.filter { $0.userId == user.id } + trip.members.filter { $0.userId != user.id }
+    }
+
     private var amount: Int? {
         MoneyFormat.minorUnits(from: amountText)
     }
@@ -55,7 +63,7 @@ struct ExpenseFormView: View {
     }
 
     private var canSave: Bool {
-        amount != nil && !trimmedTitle.isEmpty && !participants.isEmpty && !isSaving
+        isEditable && amount != nil && !trimmedTitle.isEmpty && !participants.isEmpty && !isSaving
     }
 
     private var currencySymbol: String {
@@ -66,22 +74,33 @@ struct ExpenseFormView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: Spacing.s12) {
-                    amountHeader
-                    titleField
-                    payerPicker
-                    splitList
-                    FormCard(title: "Kiedy?") {
-                        FormFieldRow {
-                            DatePicker("Dzień", selection: $date, displayedComponents: .date)
-                                .typography(.bodyRegular)
+                    Group {
+                        amountHeader
+                        titleField
+                        payerPicker
+                        splitList
+                        FormCard(title: "Kiedy?") {
+                            FormFieldRow {
+                                DatePicker("Dzień", selection: $date, displayedComponents: .date)
+                                    .typography(.bodyRegular)
+                            }
+                        }
+                        FormCard(title: "Kategoria") {
+                            PlanIconPicker(selection: $icon)
                         }
                     }
-                    FormCard(title: "Kategoria") {
-                        PlanIconPicker(selection: $icon)
+                    .disabled(!isEditable)
+                    if !isEditable {
+                        Text("Ten wydatek może zmienić tylko osoba, która go dodała, albo organizator.")
+                            .typography(.footnote)
+                            .foregroundStyle(.neutralGray)
+                            .multilineTextAlignment(.center)
+                            .padding(.top, Spacing.s8)
+                    } else {
+                        PrimaryButton(title: expense == nil ? "Dodaj wydatek" : "Zapisz zmiany", isEnabled: canSave, action: save)
+                            .padding(.top, Spacing.s12)
                     }
-                    PrimaryButton(title: expense == nil ? "Dodaj wydatek" : "Zapisz zmiany", isEnabled: canSave, action: save)
-                        .padding(.top, Spacing.s12)
-                    if expense != nil {
+                    if expense != nil && isEditable {
                         Button("Usuń wydatek", role: .destructive) { isConfirmingDelete = true }
                             .typography(.bodyEmphasis)
                             .foregroundStyle(.statusDanger)
@@ -95,15 +114,17 @@ struct ExpenseFormView: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .background { theme.background.ignoresSafeArea() }
-            .navigationTitle(expense == nil ? "Nowy wydatek" : "Edytuj wydatek")
+            .navigationTitle(expense == nil ? "Nowy wydatek" : isEditable ? "Edytuj wydatek" : "Wydatek")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(role: .close) { dismiss() }
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(role: .confirm, action: save)
-                        .disabled(!canSave)
+                if isEditable {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button(role: .confirm, action: save)
+                            .disabled(!canSave)
+                    }
                 }
             }
             .confirmationDialog("Usunąć wydatek?", isPresented: $isConfirmingDelete, titleVisibility: .visible) {
@@ -121,7 +142,11 @@ struct ExpenseFormView: View {
         .environment(\.locale, calendar.locale ?? .current)
         .tint(theme.accent)
         .interactiveDismissDisabled(isSaving)
-        .onAppear { isAmountFocused = expense == nil }
+        .task {
+            guard expense == nil else { return }
+            try? await Task.sleep(for: .milliseconds(500))
+            isAmountFocused = true
+        }
     }
 
     private var amountHeader: some View {
@@ -178,7 +203,7 @@ struct ExpenseFormView: View {
                 .padding(.top, Spacing.s8)
             ScrollView(.horizontal) {
                 HStack(spacing: Spacing.s8) {
-                    ForEach(trip.members) { member in
+                    ForEach(members) { member in
                         payerChip(member)
                     }
                 }
@@ -225,7 +250,7 @@ struct ExpenseFormView: View {
             .padding(.top, Spacing.s8)
 
             ListCard(separatorInset: Spacing.s14) {
-                ForEach(trip.members) { member in
+                ForEach(members) { member in
                     splitRow(member)
                 }
             }
