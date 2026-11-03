@@ -103,11 +103,39 @@ private struct CountdownCard: View {
     }
 }
 
+private struct TripToolTile: View {
+    let title: String
+    let detail: String
+    let image: ImageResource
+    @Environment(\.theme) private var theme
+
+    var body: some View {
+        HStack(spacing: Spacing.s12) {
+            IconBadge(image: image, foreground: theme.accentStrong, background: theme.accentTint)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .typography(.bodyEmphasis)
+                    .foregroundStyle(.neutralInk)
+                Text(detail)
+                    .typography(.captionRegular)
+                    .foregroundStyle(.neutralGray)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(Spacing.s14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.neutralWhite, in: .rect(cornerRadius: Radius.lg))
+        .contentShape(.rect(cornerRadius: Radius.lg))
+    }
+}
+
 struct TripOverviewView: View {
     let trip: Trip
     let user: AuthUser
     @Environment(TripsStore.self) private var trips
+    @Environment(DocumentsStore.self) private var documents
     @Environment(\.theme) private var theme
+    @State private var isShowingNotes = false
     @State private var isEditing = false
     @State private var isConfirmingDelete = false
     @State private var isDeleting = false
@@ -121,11 +149,18 @@ struct TripOverviewView: View {
                 CountdownCard(trip: trip, today: LocalDate(.now))
                     .padding(.horizontal, Spacing.gutter)
                     .padding(.top, -28)
+                tools
+                    .padding(.horizontal, Spacing.gutter)
+                    .padding(.top, Spacing.s16)
             }
             .padding(.bottom, Spacing.s24)
         }
         .ignoresSafeArea(edges: .top)
         .background { theme.background.ignoresSafeArea() }
+        .navigationDestination(isPresented: $isShowingNotes) {
+            NotesView(trip: trip, user: user)
+        }
+        .task(id: trip.id) { try? await documents.load(trip) }
         .toolbar {
             if trip.isOrganizer {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -152,6 +187,39 @@ struct TripOverviewView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(errorMessage)
+        }
+    }
+
+    private var tools: some View {
+        let pinned = (documents.notes(for: trip) ?? []).filter(\.pinned)
+        let documentCount = documents.documents(for: trip)?.count ?? 0
+        let noteCount = documents.notes(for: trip)?.count ?? 0
+        return VStack(alignment: .leading, spacing: Spacing.s12) {
+            if !pinned.isEmpty {
+                PinnedNotesCard(notes: pinned, userID: user.id, isCompact: true) { _ in isShowingNotes = true }
+            }
+            HStack(spacing: Spacing.s12) {
+                NavigationLink {
+                    DocumentsView(trip: trip, user: user)
+                } label: {
+                    TripToolTile(
+                        title: "Dokumenty",
+                        detail: documentCount == 0 ? "Bilety, rezerwacje" : PolishPlural.form(documentCount, one: "1 plik", few: "\(documentCount) pliki", many: "\(documentCount) plików"),
+                        image: .description
+                    )
+                }
+                .buttonStyle(.plain)
+                NavigationLink {
+                    NotesView(trip: trip, user: user)
+                } label: {
+                    TripToolTile(
+                        title: "Notatki",
+                        detail: noteCount == 0 ? "Kody, Wi‑Fi, numery" : PolishPlural.form(noteCount, one: "1 notatka", few: "\(noteCount) notatki", many: "\(noteCount) notatek"),
+                        image: .eventNote
+                    )
+                }
+                .buttonStyle(.plain)
+            }
         }
     }
 

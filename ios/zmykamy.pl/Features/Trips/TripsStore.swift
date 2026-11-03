@@ -21,9 +21,21 @@ final class TripsStore {
         trips.first { $0.id == id }
     }
 
+    private(set) var isOffline = false
+
+    private static let cacheName = "trips"
+
     func load() async throws(APIError) {
-        trips = try await call { (client, token) throws(APIError) in
-            try await client.send("GET", "trips", token: token)
+        do throws(APIError) {
+            trips = try await call { (client, token) throws(APIError) in
+                try await client.send("GET", "trips", token: token)
+            }
+            isOffline = false
+            OfflineCache.save(trips, as: Self.cacheName)
+        } catch .network {
+            guard let cached = OfflineCache.load([Trip].self, name: Self.cacheName) else { throw .network }
+            trips = cached
+            isOffline = true
         }
         hasLoaded = true
     }
