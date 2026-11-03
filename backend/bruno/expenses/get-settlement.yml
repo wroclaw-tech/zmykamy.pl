@@ -1,0 +1,32 @@
+info:
+  name: Get settlement
+  type: http
+  seq: 5
+
+http:
+  method: GET
+  url: "{{baseUrl}}/trips/{{tripId}}/settlement"
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.body?.payments?.[0]) {
+          bru.setVar("paymentId", res.body.payments[0].id);
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Any trip member. Returns `{ balances, transfers, payments, naiveTransferCount }`.
+
+  - `balances`: `{ userId, name, balance }`, positive when the member is owed money
+  - `transfers`: the fewest transfers that settle everyone, `{ from, to, amount, paymentDetails }`; `paymentDetails` (`{ blikPhone, iban }`) is only set for the viewer's own transfers
+  - `payments`: transfers marked as paid, newest first; the returned id of the first is saved as `paymentId`
+  - `naiveTransferCount`: transfers needed when settling every expense separately

@@ -1,0 +1,45 @@
+info:
+  name: Create expense
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseUrl}}/trips/{{tripId}}/expenses"
+  body:
+    type: json
+    data: |-
+      {
+        "title": "Kolacja w Time Out",
+        "amount": 68400,
+        "date": "2027-05-13",
+        "icon": "restaurant",
+        "paidBy": "{{userId}}",
+        "participants": ["{{userId}}"]
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.body?.id) {
+          bru.setVar("expenseId", res.body.id);
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Any trip member. The returned id is saved as `expenseId`.
+
+  - `title`: 1-120 characters
+  - `amount`: positive integer in minor units of the trip currency
+  - `date`: YYYY-MM-DD
+  - `icon`: one of the plan icons, defaults to `savings`
+  - `paidBy`: user id of a trip member
+  - `participants`: member user ids the amount is split between evenly; the remainder goes one unit at a time in user id order

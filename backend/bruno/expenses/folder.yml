@@ -1,0 +1,6 @@
+info:
+  name: expenses
+  type: folder
+
+request:
+  auth: inherit

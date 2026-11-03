@@ -69,7 +69,24 @@ All endpoints require authentication and are visible only to trip members; other
 - `DELETE /trips/:id` - delete the trip with its cover, returns `204`
 - `POST /trips/:id/cover/upload-url` - returns `{ uploadUrl, key }`; `PUT` the JPEG to `uploadUrl` with `Content-Type: image/jpeg` within 5 minutes, then `PATCH` the trip with `coverImageKey: key`
 
-A trip is returned as `{ id, name, destination, startDate, endDate, currency, coverUrl, myRole, members: [{ userId, name, image, role }] }`. `coverUrl` is a presigned link valid for an hour.
+A trip is returned as `{ id, name, destination, startDate, endDate, currency, coverUrl, myRole, members: [{ userId, name, image, role, balance }] }`. `coverUrl` is a presigned link valid for an hour. `balance` is in minor units of the trip currency, positive when the member is owed money. Leaving the trip or removing a member with a non-zero balance returns `409 member_not_settled`.
+
+### Expenses
+
+All amounts are integers in minor units of the trip currency. Any member can add expenses; changing or deleting one requires being its author or an organizer.
+
+- `GET /trips/:id/expenses` - `{ expenses }`, newest day first
+- `POST /trips/:id/expenses` - `{ title, amount, date, icon?, paidBy, participants }`; the amount is split evenly between `participants` (member user ids), the remainder goes one unit at a time in user id order. Returns `201`
+- `PATCH /trips/:id/expenses/:expenseId` - any of the `POST` fields; shares are recomputed when `amount` or `participants` change
+- `DELETE /trips/:id/expenses/:expenseId` - returns `204`
+
+An expense is returned as `{ id, title, amount, date, icon, paidBy: { userId, name }, shares: [{ userId, name, amount }], author, createdAt }`.
+
+### Settlement
+
+- `GET /trips/:id/settlement` - `{ balances, transfers, payments, naiveTransferCount }`. `transfers` is the fewest transfers that settle all balances (exact for up to 15 unsettled members); `paymentDetails` (`{ blikPhone, iban }` of the recipient) is only set on the viewer's own transfers. `naiveTransferCount` is how many transfers settling every expense separately would take
+- `POST /trips/:id/settlement/payments` - `{ fromUserId, toUserId, amount }`; marks a transfer as paid and returns the updated settlement with `201`. Only the payer, the recipient or an organizer can record or undo a payment
+- `DELETE /trips/:id/settlement/payments/:paymentId` - undoes a payment and returns the updated settlement
 
 ## Testing
 

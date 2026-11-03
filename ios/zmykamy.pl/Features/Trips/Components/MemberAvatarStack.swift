@@ -5,11 +5,39 @@ extension TripMember {
         String(name.prefix(1)).uppercased()
     }
 
-    /// Stable across launches, unlike `hashValue`, so a member keeps the same color everywhere.
     var avatarColor: Color {
+        AvatarColor.color(for: userId)
+    }
+}
+
+enum AvatarColor {
+    static func color(for userID: String) -> Color {
         let colors: [Color] = [.avatar1, .avatar2, .avatar3, .avatar4, .avatar5, .avatar6]
-        let seed = userId.unicodeScalars.reduce(0) { $0 + Int($1.value) }
+        let seed = userID.unicodeScalars.reduce(0) { $0 + Int($1.value) }
         return colors[seed % colors.count]
+    }
+}
+
+struct PersonAvatar: View {
+    let userID: String
+    let name: String
+    var isViewer = false
+    var size: CGFloat = 32
+    var borderColor: Color?
+    @Environment(\.theme) private var theme
+
+    var body: some View {
+        Text(String(name.prefix(1)).uppercased())
+            .font(.system(size: size * 0.42, weight: .bold))
+            .foregroundStyle(.neutralWhite)
+            .frame(width: size, height: size)
+            .background(isViewer ? theme.accent : AvatarColor.color(for: userID), in: .circle)
+            .overlay {
+                if let borderColor {
+                    Circle().strokeBorder(borderColor, lineWidth: 2)
+                }
+            }
+            .accessibilityHidden(true)
     }
 }
 

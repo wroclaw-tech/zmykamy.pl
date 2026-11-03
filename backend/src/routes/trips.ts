@@ -4,6 +4,7 @@ import type { z } from "zod";
 import { db } from "../db";
 import { planPoint, trip, tripInvite, tripMember } from "../db/schema";
 import type { AppEnv } from "../lib/app-env";
+import { getBalancesByTrip, getTripBalances } from "../lib/balances";
 import { ApiError } from "../lib/errors";
 import { generateInviteCode, toInviteSlug, toInviteUrl } from "../lib/invite";
 import { logger } from "../lib/logger";
@@ -32,8 +33,6 @@ export const findTrip = (id: string) =>
 
 type TripWithMembers = NonNullable<Awaited<ReturnType<typeof findTrip>>>;
 
-const getMemberBalance = () => 0;
-
 const getInviteLabel = (record: { name: string; destinationName: string | null }) =>
   record.destinationName ?? record.name;
 
@@ -55,7 +54,11 @@ const toDestinationColumns = (destination: Destination) => ({
   destinationLongitude: destination?.longitude ?? null,
 });
 
-export const toTripResponse = (record: TripWithMembers, userId: string) => {
+export const toTripResponse = (
+  record: TripWithMembers,
+  userId: string,
+  balances: Map<string, number>,
+) => {
   const members = record.members.toSorted(
     (a, b) =>
       ROLE_ORDER[a.role] - ROLE_ORDER[b.role] || a.joinedAt.getTime() - b.joinedAt.getTime(),
@@ -81,7 +84,7 @@ export const toTripResponse = (record: TripWithMembers, userId: string) => {
       name: member.user.name,
       image: member.user.image,
       role: member.role,
-      balance: getMemberBalance(),
+      balance: balances.get(member.userId) ?? 0,
     })),
   };
 };
@@ -92,6 +95,15 @@ export const getMemberTrip = async (id: string, userId: string) => {
     throw new ApiError(404, "trip_not_found", "Trip not found");
   }
   return record;
+};
+
+export const respondWithTrip = async (tripId: string, userId: string) =>
+  toTripResponse((await findTrip(tripId))!, userId, await getTripBalances(tripId));
+
+const assertSettled = async (tripId: string, userId: string) => {
+  if (((await getTripBalances(tripId)).get(userId) ?? 0) !== 0) {
+    throw new ApiError(409, "member_not_settled", "Settle this member's balance first");
+  }
 };
 
 const getOrganizerTrip = async (id: string, userId: string) => {
@@ -147,7 +159,12 @@ export const trips = new Hono<AppEnv>()
       where: eq(tripMember.userId, userId),
       with: { trip: { with: { members: { with: { user: true } } } } },
     });
-    return c.json(memberships.map((membership) => toTripResponse(membership.trip, userId)));
+    const balances = await getBalancesByTrip(memberships.map((membership) => membership.tripId));
+    return c.json(
+      memberships.map((membership) =>
+        toTripResponse(membership.trip, userId, balances.get(membership.tripId)!),
+      ),
+    );
   })
   .post("/", validate("json", createTripSchema), async (c) => {
     const userId = c.get("user").id;
@@ -160,12 +177,13 @@ export const trips = new Hono<AppEnv>()
       await tx.insert(tripMember).values({ tripId: created!.id, userId, role: "organizer" });
       return created!.id;
     });
-    return c.json(toTripResponse((await findTrip(tripId))!, userId), 201);
+    return c.json(await respondWithTrip(tripId, userId), 201);
   })
   .get("/:id", validate("param", tripIdParamSchema), async (c) => {
     const userId = c.get("user").id;
-    const record = await getMemberTrip(c.req.valid("param").id, userId);
-    return c.json(toTripResponse(record, userId));
+    const { id } = c.req.valid("param");
+    const record = await getMemberTrip(id, userId);
+    return c.json(toTripResponse(record, userId, await getTripBalances(id)));
   })
   .patch(
     "/:id",
@@ -203,7 +221,7 @@ export const trips = new Hono<AppEnv>()
       if (coverImageKey !== undefined && coverImageKey !== current.coverImageKey) {
         await deleteCover(current.coverImageKey);
       }
-      return c.json(toTripResponse((await findTrip(id))!, userId));
+      return c.json(await respondWithTrip(id, userId));
     },
   )
   .delete("/:id", validate("param", tripIdParamSchema), async (c) => {
@@ -241,6 +259,7 @@ export const trips = new Hono<AppEnv>()
     if (record.members.find((member) => member.userId === userId)?.role === "organizer") {
       throw new ApiError(409, "organizer_cannot_leave", "The organizer can only delete the trip");
     }
+    await assertSettled(id, userId);
     await db
       .delete(tripMember)
       .where(and(eq(tripMember.tripId, id), eq(tripMember.userId, userId)));
@@ -255,6 +274,7 @@ export const trips = new Hono<AppEnv>()
     if (!record.members.some((member) => member.userId === userId)) {
       throw new ApiError(404, "member_not_found", "Member not found");
     }
+    await assertSettled(id, userId);
     await db
       .delete(tripMember)
       .where(and(eq(tripMember.tripId, id), eq(tripMember.userId, userId)));

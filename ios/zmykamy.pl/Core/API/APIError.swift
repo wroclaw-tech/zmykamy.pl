@@ -34,6 +34,7 @@ nonisolated enum APIError: LocalizedError, Equatable, Sendable {
         case .notFound: "Ten wyjazd już nie istnieje albo nie masz do niego dostępu."
         case .validation: "Sprawdź wpisane dane i spróbuj ponownie."
         case .network: "Brak połączenia z serwerem. Spróbuj ponownie."
+        case .server(_, "member_not_settled"): "Najpierw trzeba rozliczyć saldo tego uczestnika."
         case .server(_, "plan_points_out_of_range"): "Przenieś albo usuń punkty planu spoza nowych dat wyjazdu."
         case .server: "Coś poszło nie tak. Spróbuj ponownie za chwilę."
         }

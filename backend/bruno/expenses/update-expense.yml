@@ -1,0 +1,25 @@
+info:
+  name: Update expense
+  type: http
+  seq: 3
+
+http:
+  method: PATCH
+  url: "{{baseUrl}}/trips/{{tripId}}/expenses/{{expenseId}}"
+  body:
+    type: json
+    data: |-
+      {
+        "amount": 72000
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  The expense author or an organizer. All create fields are optional, at least one is required; shares are recomputed when `amount` or `participants` change.
