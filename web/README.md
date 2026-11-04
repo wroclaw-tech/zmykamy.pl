@@ -2,13 +2,13 @@
 
 nginx container for `https://zmykamy.pl`. It serves the landing page and the files iOS needs to open invite links (`/j/<slug>`) straight in the app.
 
-- `/.well-known/apple-app-site-association` — generated on startup from `APPLE_TEAM_ID`; the container exits if it is not set
+- `/.well-known/apple-app-site-association` — generated on startup from `APPLE_TEAM_ID`; returns `404` while it is not set, so invite links open in Safari instead of the app
 - `/j/*` — proxied to the backend, which renders the invite page for people without the app
 - everything else — static files from `public/`
 
 ## Environment
 
-- `APPLE_TEAM_ID` — Apple Developer team ID, e.g. `ABCDE12345`
+- `APPLE_TEAM_ID` — optional, Apple Developer team ID, e.g. `ABCDE12345`
 - `BACKEND_URL` — backend origin without a trailing slash, e.g. `https://api.zmykamy.pl`
 
 ## Running locally
