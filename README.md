@@ -27,7 +27,7 @@ The API listens on `http://localhost:3000`. See [`backend/README.md`](backend/RE
 
 Open `ios/zmykamy.pl.xcodeproj` in Xcode and run the `zmykamy.pl` scheme on an iOS Simulator.
 
-Debug builds talk to the local backend at `http://localhost:3000`, so start it first. To use the production API (`https://api-zmykamy.b.solvro.pl`) instead:
+Debug builds talk to the local backend at `http://localhost:3000`, so start it first. To use the production API (`https://api.zmykamy.pl`) instead:
 
 1. **Product → Scheme → Edit Scheme…** (`⌘ <`)
 2. Select **Run** → **Arguments**
