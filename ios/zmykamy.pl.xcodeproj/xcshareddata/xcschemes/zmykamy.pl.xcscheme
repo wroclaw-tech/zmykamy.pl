@@ -74,7 +74,7 @@
       <EnvironmentVariables>
          <EnvironmentVariable
             key = "ZMYKAMY_API_URL"
-            value = "https://api-zmykamy.b.solvro.pl"
+            value = "https://api.zmykamy.pl"
             isEnabled = "NO">
          </EnvironmentVariable>
       </EnvironmentVariables>

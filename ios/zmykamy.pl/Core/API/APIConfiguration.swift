@@ -10,7 +10,7 @@ nonisolated enum APIConfiguration {
         #if DEBUG
         return URL(string: "http://localhost:3000")!
         #else
-        return URL(string: "https://api-zmykamy.b.solvro.pl")!
+        return URL(string: "https://api.zmykamy.pl")!
         #endif
     }()
 
