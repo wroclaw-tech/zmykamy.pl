@@ -4,6 +4,7 @@ Mobile app for planning group trips.
 
 - `backend/` — Bun + Hono API with Better Auth and Postgres
 - `ios/` — SwiftUI app
+- `web/` — nginx container for zmykamy.pl: landing page and universal links
 - `docs/` — product docs
 
 ## Running locally

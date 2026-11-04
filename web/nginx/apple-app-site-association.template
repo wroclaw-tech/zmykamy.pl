@@ -1,0 +1,10 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["${APPLE_TEAM_ID}.pl.zmykamy.app"],
+        "components": [{ "/": "/j/*" }]
+      }
+    ]
+  }
+}

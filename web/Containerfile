@@ -1,0 +1,10 @@
+FROM nginx:1.29-alpine
+
+COPY nginx/default.conf.template /etc/nginx/templates/default.conf.template
+COPY nginx/apple-app-site-association.template /etc/nginx/apple-app-site-association.template
+COPY nginx/40-apple-app-site-association.sh /docker-entrypoint.d/40-apple-app-site-association.sh
+COPY public /usr/share/nginx/html
+
+RUN chmod +x /docker-entrypoint.d/40-apple-app-site-association.sh
+
+EXPOSE 80
