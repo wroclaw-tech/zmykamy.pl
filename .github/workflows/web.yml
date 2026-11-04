@@ -1,0 +1,52 @@
+name: web
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - ".github/workflows/web.yml"
+  pull_request:
+    paths:
+      - "web/**"
+      - ".github/workflows/web.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: web
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      # No hostname, so nginx starts without resolving anything; /j/* is not checked.
+      BACKEND_URL: http://127.0.0.1:3000
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build
+        run: docker build -f Containerfile -t zmykamy-web .
+
+      - name: Serve with team ID
+        run: |
+          docker run -d --name with-team -p 8080:80 -e BACKEND_URL -e APPLE_TEAM_ID=ABCDE12345 zmykamy-web
+          curl --retry 10 --retry-all-errors --retry-delay 1 -fsS -o /dev/null http://localhost:8080/
+          curl -fsS -D headers -o aasa http://localhost:8080/.well-known/apple-app-site-association
+          grep -i '^content-type: application/json' headers
+          jq -e '.applinks.details[0].appIDs == ["ABCDE12345.pl.zmykamy.app"]' aasa
+
+      - name: Serve without team ID
+        run: |
+          docker run -d --name without-team -p 8081:80 -e BACKEND_URL zmykamy-web
+          curl --retry 10 --retry-all-errors --retry-delay 1 -fsS -o /dev/null http://localhost:8081/
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8081/.well-known/apple-app-site-association)" = 404
+
+      - name: Logs
+        if: failure()
+        run: |
+          docker logs with-team || true
+          docker logs without-team || true
