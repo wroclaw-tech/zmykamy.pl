@@ -5,6 +5,7 @@ import UIKit
 final class TripsStore {
     private(set) var trips: [Trip] = []
     private(set) var hasLoaded = false
+    private(set) var progress: [Trip.ID: TripProgress] = [:]
 
     let api: AuthorizedAPI
     private let client: APIClient
@@ -38,6 +39,13 @@ final class TripsStore {
             isOffline = true
         }
         hasLoaded = true
+    }
+
+    func loadProgress(of trip: Trip) async throws(APIError) {
+        let details: TripDetailsResponse = try await call { (client, token) throws(APIError) in
+            try await client.send("GET", "trips/\(trip.id)", token: token)
+        }
+        progress[trip.id] = details.progress
     }
 
     func create(_ request: TripRequest) async throws(APIError) -> Trip {

@@ -8,7 +8,10 @@ import { documents } from "./routes/documents";
 import { expenses } from "./routes/expenses";
 import { invites } from "./routes/invites";
 import { gallery } from "./routes/media";
+import { packing } from "./routes/packing";
 import { plan } from "./routes/plan";
+import { polls } from "./routes/polls";
+import { tasks } from "./routes/tasks";
 import { trips } from "./routes/trips";
 import { universalLinks } from "./routes/universal-links";
 
@@ -25,6 +28,9 @@ app.route("/trips", plan);
 app.route("/trips", expenses);
 app.route("/trips", gallery);
 app.route("/trips", documents);
+app.route("/trips", packing);
+app.route("/trips", tasks);
+app.route("/trips", polls);
 app.route("/invites", invites);
 app.route("/", universalLinks);
 
