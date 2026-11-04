@@ -2,7 +2,7 @@ name: zmykamy
 
 services:
   postgres:
-    image: postgres:18-alpine
+    image: docker.io/postgres:18-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: zmykamy
@@ -19,7 +19,7 @@ services:
       retries: 5
 
   garage:
-    image: dxflrs/garage:v2.3.0
+    image: docker.io/dxflrs/garage:v2.3.0
     restart: unless-stopped
     ports:
       - "${S3_PORT:-3900}:3900"
@@ -28,7 +28,7 @@ services:
       - garage-data:/var/lib/garage
 
   garage-init:
-    image: alpine:3.22
+    image: docker.io/alpine:3.22
     depends_on:
       - garage
     environment:
