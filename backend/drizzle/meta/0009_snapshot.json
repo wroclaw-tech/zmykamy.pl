@@ -109,12 +109,8 @@
           "name": "account_user_id_user_id_fk",
           "tableFrom": "account",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -218,12 +214,8 @@
           "name": "session_user_id_user_id_fk",
           "tableFrom": "session",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -233,9 +225,7 @@
         "session_token_unique": {
           "name": "session_token_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "token"
-          ]
+          "columns": ["token"]
         }
       },
       "policies": {},
@@ -373,9 +363,7 @@
         "user_email_unique": {
           "name": "user_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "policies": {},
@@ -555,12 +543,8 @@
           "name": "trip_document_trip_id_trip_id_fk",
           "tableFrom": "trip_document",
           "tableTo": "trip",
-          "columnsFrom": [
-            "trip_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["trip_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -568,12 +552,8 @@
           "name": "trip_document_plan_point_id_plan_point_id_fk",
           "tableFrom": "trip_document",
           "tableTo": "plan_point",
-          "columnsFrom": [
-            "plan_point_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["plan_point_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -581,12 +561,8 @@
           "name": "trip_document_created_by_user_id_fk",
           "tableFrom": "trip_document",
           "tableTo": "user",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -682,12 +658,8 @@
           "name": "trip_note_trip_id_trip_id_fk",
           "tableFrom": "trip_note",
           "tableTo": "trip",
-          "columnsFrom": [
-            "trip_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["trip_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -695,12 +667,8 @@
           "name": "trip_note_created_by_user_id_fk",
           "tableFrom": "trip_note",
           "tableTo": "user",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -808,12 +776,8 @@
           "name": "expense_trip_id_trip_id_fk",
           "tableFrom": "expense",
           "tableTo": "trip",
-          "columnsFrom": [
-            "trip_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["trip_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -821,12 +785,8 @@
           "name": "expense_paid_by_user_id_fk",
           "tableFrom": "expense",
           "tableTo": "user",
-          "columnsFrom": [
-            "paid_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["paid_by"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -834,12 +794,8 @@
           "name": "expense_created_by_user_id_fk",
           "tableFrom": "expense",
           "tableTo": "user",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -884,12 +840,8 @@
           "name": "expense_share_expense_id_expense_id_fk",
           "tableFrom": "expense_share",
           "tableTo": "expense",
-          "columnsFrom": [
-            "expense_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["expense_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -897,12 +849,8 @@
           "name": "expense_share_user_id_user_id_fk",
           "tableFrom": "expense_share",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -910,10 +858,7 @@
       "compositePrimaryKeys": {
         "expense_share_expense_id_user_id_pk": {
           "name": "expense_share_expense_id_user_id_pk",
-          "columns": [
-            "expense_id",
-            "user_id"
-          ]
+          "columns": ["expense_id", "user_id"]
         }
       },
       "uniqueConstraints": {},
@@ -997,12 +942,8 @@
           "name": "settlement_payment_trip_id_trip_id_fk",
           "tableFrom": "settlement_payment",
           "tableTo": "trip",
-          "columnsFrom": [
-            "trip_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["trip_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1010,12 +951,8 @@
           "name": "settlement_payment_from_user_id_user_id_fk",
           "tableFrom": "settlement_payment",
           "tableTo": "user",
-          "columnsFrom": [
-            "from_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["from_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1023,12 +960,8 @@
           "name": "settlement_payment_to_user_id_user_id_fk",
           "tableFrom": "settlement_payment",
           "tableTo": "user",
-          "columnsFrom": [
-            "to_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["to_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1036,12 +969,8 @@
           "name": "settlement_payment_created_by_user_id_fk",
           "tableFrom": "settlement_payment",
           "tableTo": "user",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1168,12 +1097,8 @@
           "name": "media_trip_id_trip_id_fk",
           "tableFrom": "media",
           "tableTo": "trip",
-          "columnsFrom": [
-            "trip_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["trip_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1181,12 +1106,8 @@
           "name": "media_uploaded_by_user_id_fk",
           "tableFrom": "media",
           "tableTo": "user",
-          "columnsFrom": [
-            "uploaded_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["uploaded_by"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1282,12 +1203,8 @@
           "name": "packing_item_trip_id_trip_id_fk",
           "tableFrom": "packing_item",
           "tableTo": "trip",
-          "columnsFrom": [
-            "trip_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["trip_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1295,12 +1212,8 @@
           "name": "packing_item_owner_id_user_id_fk",
           "tableFrom": "packing_item",
           "tableTo": "user",
-          "columnsFrom": [
-            "owner_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["owner_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1308,12 +1221,8 @@
           "name": "packing_item_assignee_id_user_id_fk",
           "tableFrom": "packing_item",
           "tableTo": "user",
-          "columnsFrom": [
-            "assignee_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["assignee_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -1321,12 +1230,8 @@
           "name": "packing_item_created_by_user_id_fk",
           "tableFrom": "packing_item",
           "tableTo": "user",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1445,12 +1350,8 @@
           "name": "plan_point_trip_id_trip_id_fk",
           "tableFrom": "plan_point",
           "tableTo": "trip",
-          "columnsFrom": [
-            "trip_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["trip_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1458,12 +1359,8 @@
           "name": "plan_point_created_by_user_id_fk",
           "tableFrom": "plan_point",
           "tableTo": "user",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1554,12 +1451,8 @@
           "name": "trip_info_trip_id_trip_id_fk",
           "tableFrom": "trip_info",
           "tableTo": "trip",
-          "columnsFrom": [
-            "trip_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["trip_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1567,12 +1460,8 @@
           "name": "trip_info_created_by_user_id_fk",
           "tableFrom": "trip_info",
           "tableTo": "user",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1666,12 +1555,8 @@
           "name": "poll_trip_id_trip_id_fk",
           "tableFrom": "poll",
           "tableTo": "trip",
-          "columnsFrom": [
-            "trip_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["trip_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1679,12 +1564,8 @@
           "name": "poll_created_by_user_id_fk",
           "tableFrom": "poll",
           "tableTo": "user",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -1692,12 +1573,8 @@
           "name": "poll_winning_option_id_poll_option_id_fk",
           "tableFrom": "poll",
           "tableTo": "poll_option",
-          "columnsFrom": [
-            "winning_option_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["winning_option_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1766,12 +1643,8 @@
           "name": "poll_option_poll_id_poll_id_fk",
           "tableFrom": "poll_option",
           "tableTo": "poll",
-          "columnsFrom": [
-            "poll_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["poll_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1834,12 +1707,8 @@
           "name": "poll_vote_poll_id_poll_id_fk",
           "tableFrom": "poll_vote",
           "tableTo": "poll",
-          "columnsFrom": [
-            "poll_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["poll_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1847,12 +1716,8 @@
           "name": "poll_vote_option_id_poll_option_id_fk",
           "tableFrom": "poll_vote",
           "tableTo": "poll_option",
-          "columnsFrom": [
-            "option_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["option_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1860,12 +1725,8 @@
           "name": "poll_vote_user_id_user_id_fk",
           "tableFrom": "poll_vote",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1873,10 +1734,7 @@
       "compositePrimaryKeys": {
         "poll_vote_poll_id_user_id_pk": {
           "name": "poll_vote_poll_id_user_id_pk",
-          "columns": [
-            "poll_id",
-            "user_id"
-          ]
+          "columns": ["poll_id", "user_id"]
         }
       },
       "uniqueConstraints": {},
@@ -1968,12 +1826,8 @@
           "name": "trip_task_trip_id_trip_id_fk",
           "tableFrom": "trip_task",
           "tableTo": "trip",
-          "columnsFrom": [
-            "trip_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["trip_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1981,12 +1835,8 @@
           "name": "trip_task_assignee_id_user_id_fk",
           "tableFrom": "trip_task",
           "tableTo": "user",
-          "columnsFrom": [
-            "assignee_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["assignee_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -1994,12 +1844,8 @@
           "name": "trip_task_created_by_user_id_fk",
           "tableFrom": "trip_task",
           "tableTo": "user",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -2133,12 +1979,8 @@
           "name": "trip_invite_trip_id_trip_id_fk",
           "tableFrom": "trip_invite",
           "tableTo": "trip",
-          "columnsFrom": [
-            "trip_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["trip_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2148,9 +1990,7 @@
         "trip_invite_code_unique": {
           "name": "trip_invite_code_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "code"
-          ]
+          "columns": ["code"]
         }
       },
       "policies": {},
@@ -2209,12 +2049,8 @@
           "name": "trip_member_trip_id_trip_id_fk",
           "tableFrom": "trip_member",
           "tableTo": "trip",
-          "columnsFrom": [
-            "trip_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["trip_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -2222,12 +2058,8 @@
           "name": "trip_member_user_id_user_id_fk",
           "tableFrom": "trip_member",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2235,10 +2067,7 @@
       "compositePrimaryKeys": {
         "trip_member_trip_id_user_id_pk": {
           "name": "trip_member_trip_id_user_id_pk",
-          "columns": [
-            "trip_id",
-            "user_id"
-          ]
+          "columns": ["trip_id", "user_id"]
         }
       },
       "uniqueConstraints": {},
