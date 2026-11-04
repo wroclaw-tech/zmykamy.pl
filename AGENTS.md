@@ -4,6 +4,7 @@ Monorepo for a mobile app for planning group trips.
 
 - `backend/` — Bun + Hono API (see `backend/CLAUDE.md`)
 - `ios/` — iOS app
+- `web/` — nginx container for zmykamy.pl (landing page, universal links)
 - `docs/` — product docs
 
 ## Git
@@ -17,7 +18,7 @@ Use Conventional Commits with the monorepo package as the scope:
 ```
 
 - Types: `feat`, `fix`, `chore`, `refactor`, `docs`, `test`, `perf`, `style`, `ci`, `build`
-- Scopes: `backend`, `ios`, `docs`; omit the scope for changes spanning the whole repo
+- Scopes: `backend`, `ios`, `web`, `docs`; omit the scope for changes spanning the whole repo
 - Description in lowercase, imperative mood, no trailing period
 
 Examples:
