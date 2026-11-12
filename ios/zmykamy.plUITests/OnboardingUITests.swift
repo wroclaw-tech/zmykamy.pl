@@ -42,7 +42,9 @@ final class OnboardingUITests: XCTestCase {
         app.textFields["E-mail"].typeText("kuba@zmykamy.pl")
         let password = app.secureTextFields["Hasło (min. 8 znaków)"]
         password.tap()
+        if declineStrongPassword() { password.tap() }
         password.typeText("krotkie")
+        XCTAssertEqual((password.value as? String)?.count, 7, "Password wasn't typed")
         XCTAssertFalse(submit.isEnabled, "Passwords shorter than 8 characters are rejected")
 
         password.typeText("1")
@@ -60,6 +62,18 @@ final class OnboardingUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(button("Zaloguj się").waitForExistence(timeout: 5), "Onboarding isn't shown again")
+    }
+
+    /// Some iOS versions offer a strong password when the sign-up password field gets focus. The sheet
+    /// swallows typing, so close it. Returns whether it was shown.
+    @MainActor
+    private func declineStrongPassword() -> Bool {
+        let fill = app.buttons["Fill Strong Password"]
+        guard fill.waitForExistence(timeout: 3) else { return false }
+        let close = app.buttons.matching(NSPredicate(format: "label IN %@ OR identifier IN %@", ["Close", "Zamknij"], ["Close", "close"])).firstMatch
+        if close.exists { close.tap() } else { fill.swipeDown(velocity: .fast) }
+        XCTAssertTrue(fill.waitForNonExistence(timeout: 5), "Strong password sheet didn't close")
+        return true
     }
 
     /// Buttons whose label starts with `title`, since icons can add to the accessibility label.
