@@ -457,7 +457,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Zmykamy.pl;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Aparat pozwala dodawać zdjęcia i filmy do wspólnej galerii wyjazdu.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Aparat pozwala dodawać zdjęcia i filmy do wspólnej galerii wyjazdu oraz skanować kody QR zaproszeń.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Mikrofon nagrywa dźwięk do filmów dodawanych do galerii wyjazdu.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Dzięki temu zapiszesz zdjęcia i filmy z galerii wyjazdu w swojej bibliotece.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -496,7 +496,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Zmykamy.pl;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Aparat pozwala dodawać zdjęcia i filmy do wspólnej galerii wyjazdu.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Aparat pozwala dodawać zdjęcia i filmy do wspólnej galerii wyjazdu oraz skanować kody QR zaproszeń.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Mikrofon nagrywa dźwięk do filmów dodawanych do galerii wyjazdu.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Dzięki temu zapiszesz zdjęcia i filmy z galerii wyjazdu w swojej bibliotece.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
