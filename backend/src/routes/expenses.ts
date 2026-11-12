@@ -53,6 +53,7 @@ const toExpenseResponse = (record: ExpenseRecord) => ({
           exchangeRate: record.exchangeRate,
           rateSource: record.rateSource,
           rateDate: record.rateDate,
+          rateTable: record.rateTable,
         }
       : null,
   paidBy: toPerson(record.payer),
@@ -119,6 +120,7 @@ const resolveAmount = async (tripCurrency: string, input: AmountInput) => {
       exchangeRate: null,
       rateSource: null,
       rateDate: null,
+      rateTable: null,
     };
   }
   const nbp =
@@ -137,6 +139,7 @@ const resolveAmount = async (tripCurrency: string, input: AmountInput) => {
     exchangeRate,
     rateSource: nbp ? ("nbp" as const) : ("custom" as const),
     rateDate: nbp?.effectiveDate ?? null,
+    rateTable: nbp?.table ?? null,
   };
 };
 

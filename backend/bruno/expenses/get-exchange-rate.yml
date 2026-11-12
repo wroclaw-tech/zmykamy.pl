@@ -16,7 +16,9 @@ settings:
   forwardAuthorizationHeader: true
 
 docs: |-
-  Any trip member. Returns `{ from, to, rate, effectiveDate }`: the NBP mid rate converting one unit of `currency` into the trip currency.
+  Any trip member. Returns `{ from, to, rate, effectiveDate, table }`: the NBP mid rate converting one unit of `currency` into the trip currency.
 
   - `currency`: ISO code
   - `date`: optional YYYY-MM-DD, defaults to today; the last table published on or before it is used (future dates use the latest one)
+
+  - `table`: `A` or `B`, `A/B` when a cross rate uses both tables, or `null` for the same currency

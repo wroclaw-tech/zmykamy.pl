@@ -32,6 +32,7 @@ export const expense = pgTable(
     exchangeRate: doublePrecision("exchange_rate"),
     rateSource: text("rate_source", { enum: ["nbp", "custom"] }),
     rateDate: date("rate_date"),
+    rateTable: text("rate_table", { enum: ["A", "B", "A/B"] }),
     paidBy: text("paid_by")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),

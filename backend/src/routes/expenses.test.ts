@@ -204,6 +204,7 @@ type ExpenseResponse = {
     exchangeRate: number;
     rateSource: "nbp" | "custom";
     rateDate: string | null;
+    rateTable: "A" | "B" | "A/B" | null;
   } | null;
 };
 
@@ -243,8 +244,19 @@ describe("foreign currency expenses", () => {
       amount: 42500,
       rateSource: "nbp",
       rateDate: "2026-05-08",
+      rateTable: "A",
     });
     expect(body.original!.exchangeRate).toBeCloseTo(1 / 4.25);
+  });
+
+  test("persists mixed-table attribution in the expense list", async () => {
+    const { kuba, id } = await setup();
+    const { status, body } = await addForeign(kuba, id, { amount: 1000000, currency: "VND" });
+    expect(status).toBe(201);
+    expect(body.original?.rateTable).toBe("A/B");
+    const response = await request(`/trips/${id}/expenses`, kuba);
+    const listed = (await response.json()) as { expenses: ExpenseResponse[] };
+    expect(listed.expenses[0]?.original?.rateTable).toBe("A/B");
   });
 
   test("uses a custom rate when given", async () => {
@@ -259,6 +271,7 @@ describe("foreign currency expenses", () => {
       rateSource: "custom",
       exchangeRate: 0.9,
       rateDate: null,
+      rateTable: null,
     });
     expect(fetchSpy).not.toHaveBeenCalled();
   });
@@ -287,12 +300,17 @@ describe("foreign currency expenses", () => {
       ).json()) as ExpenseResponse;
 
     expect((await patch({ amount: 20000 })).amount).toBe(18824);
-    expect((await patch({ exchangeRate: 1 })).amount).toBe(20000);
+    const custom = await patch({ exchangeRate: 1 });
+    expect(custom.amount).toBe(20000);
+    expect(custom.original?.rateTable).toBeNull();
     expect((await patch({ date: "2027-05-14" })).original).toMatchObject({
       rateSource: "custom",
       exchangeRate: 1,
     });
-    expect((await patch({ exchangeRate: null })).original).toMatchObject({ rateSource: "nbp" });
+    expect((await patch({ exchangeRate: null })).original).toMatchObject({
+      rateSource: "nbp",
+      rateTable: "A",
+    });
     const local = await patch({ currency: "EUR", amount: 5000 });
     expect(local.amount).toBe(5000);
     expect(local.original).toBeNull();
@@ -314,7 +332,7 @@ describe("foreign currency expenses", () => {
     const response = await request(`/trips/${id}/exchange-rate?currency=usd&date=2026-05-10`, kuba);
     expect(response.status).toBe(200);
     const body = (await response.json()) as { from: string; to: string; rate: number };
-    expect(body).toMatchObject({ from: "USD", to: "EUR", effectiveDate: "2026-05-08" });
+    expect(body).toMatchObject({ from: "USD", to: "EUR", effectiveDate: "2026-05-08", table: "A" });
     expect(body.rate).toBeCloseTo(4 / 4.25);
   });
 });

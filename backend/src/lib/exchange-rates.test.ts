@@ -16,6 +16,7 @@ describe("getExchangeRate", () => {
     expect(await getExchangeRate("EUR", "PLN", "2026-05-10")).toEqual({
       rate: 4.25,
       effectiveDate: "2026-05-08",
+      table: "A",
     });
     expect((await getExchangeRate("PLN", "EUR", "2026-05-10")).rate).toBeCloseTo(1 / 4.25);
   });
@@ -28,7 +29,33 @@ describe("getExchangeRate", () => {
     expect(await getExchangeRate("VND", "PLN", "2026-05-10")).toEqual({
       rate: 0.00016,
       effectiveDate: "2026-05-06",
+      table: "B",
     });
+  });
+
+  test("reports both tables for mixed-table cross rates in either direction", async () => {
+    for (const [from, to] of [
+      ["EUR", "VND"],
+      ["VND", "EUR"],
+    ] as const) {
+      expect(await getExchangeRate(from, to, "2026-05-10")).toMatchObject({
+        table: "A/B",
+        effectiveDate: "2026-05-06",
+      });
+    }
+  });
+
+  test("reports the target table when converting PLN to a foreign currency", async () => {
+    expect((await getExchangeRate("PLN", "VND", "2026-05-10")).table).toBe("B");
+  });
+
+  test("returns no table for same-currency conversions", async () => {
+    expect(await getExchangeRate("EUR", "EUR", "2026-05-10")).toEqual({
+      rate: 1,
+      effectiveDate: "2026-05-10",
+      table: null,
+    });
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   test("asks for the latest rate up to the payment day", async () => {

@@ -13,9 +13,14 @@ const nbpResponseSchema = z.object({
   rates: z.array(z.object({ effectiveDate: z.iso.date(), mid: z.number().positive() })).min(1),
 });
 
-type NbpRate = { mid: number; effectiveDate: string };
+type NbpTable = "A" | "B";
+type NbpRate = { mid: number; effectiveDate: string; table: NbpTable | null };
 
-export type ExchangeRate = { rate: number; effectiveDate: string };
+export type ExchangeRate = {
+  rate: number;
+  effectiveDate: string;
+  table: NbpTable | "A/B" | null;
+};
 
 const cache = new Map<string, Promise<NbpRate | null>>();
 
@@ -35,7 +40,7 @@ const fetchTableRate = async (table: "a" | "b", currency: string, date: string) 
     throw new Error(`NBP responded with ${response.status}`);
   }
   const { rates } = nbpResponseSchema.parse(await response.json());
-  return rates.at(-1)!;
+  return { ...rates.at(-1)!, table: table === "a" ? ("A" as const) : ("B" as const) };
 };
 
 const fetchNbpRate = async (currency: string, date: string): Promise<NbpRate | null> =>
@@ -59,7 +64,7 @@ const getNbpRate = (currency: string, date: string) => {
 
 const getPlnRate = async (currency: string, date: string): Promise<NbpRate> => {
   if (currency === BASE_CURRENCY) {
-    return { mid: 1, effectiveDate: date };
+    return { mid: 1, effectiveDate: date, table: null };
   }
   let rate: NbpRate | null;
   try {
@@ -83,7 +88,7 @@ export const getExchangeRate = async (
   const today = getWarsawToday();
   const day = date > today ? today : date;
   if (from === to) {
-    return { rate: 1, effectiveDate: day };
+    return { rate: 1, effectiveDate: day, table: null };
   }
   const [source, target] = await Promise.all([getPlnRate(from, day), getPlnRate(to, day)]);
   const effectiveDate =
@@ -92,7 +97,11 @@ export const getExchangeRate = async (
       : to === BASE_CURRENCY || source.effectiveDate < target.effectiveDate
         ? source.effectiveDate
         : target.effectiveDate;
-  return { rate: source.mid / target.mid, effectiveDate };
+  const table =
+    source.table && target.table && source.table !== target.table
+      ? "A/B"
+      : (source.table ?? target.table);
+  return { rate: source.mid / target.mid, effectiveDate, table };
 };
 
 const getMinorUnitDigits = (currency: string) =>
