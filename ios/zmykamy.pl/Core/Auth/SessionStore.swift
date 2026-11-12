@@ -2,8 +2,12 @@ import Foundation
 import Security
 
 nonisolated struct SessionStore: Sendable {
-    private let service = "pl.zmykamy.app.auth"
+    private let service: String
     private let account = "session"
+
+    init(service: String = "pl.zmykamy.app.auth") {
+        self.service = service
+    }
 
     func load() -> StoredSession? {
         var query = baseQuery
