@@ -13,8 +13,11 @@ final class InviteLinkRouter {
     var pending: PendingInvite?
 
     func open(_ url: URL) {
-        let components = url.pathComponents
-        guard components.count == 3, components[1] == "j" else { return }
-        pending = PendingInvite(code: components[2])
+        guard let slug = InviteLink.slug(from: url) else { return }
+        open(code: slug)
+    }
+
+    func open(code: String) {
+        pending = PendingInvite(code: code)
     }
 }

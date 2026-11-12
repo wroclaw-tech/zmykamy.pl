@@ -17,6 +17,7 @@ struct InviteLinkRouterTests {
         "https://zmykamy.pl/j",
         "https://zmykamy.pl/trips/LIZ-6K2PX9QM",
         "https://zmykamy.pl/j/LIZ-6K2PX9QM/extra",
+        "https://example.com/j/LIZ-6K2PX9QM",
     ])
     func ignoresOtherLinks(_ link: String) {
         let router = InviteLinkRouter()
