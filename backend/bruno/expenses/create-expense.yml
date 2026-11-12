@@ -38,7 +38,9 @@ docs: |-
   Any trip member. The returned id is saved as `expenseId`.
 
   - `title`: 1-120 characters
-  - `amount`: positive integer in minor units of the trip currency
+  - `amount`: positive integer in minor units of `currency`
+  - `currency`: optional ISO code, defaults to the trip currency; other currencies are converted to the trip currency and the entered values are returned in `original` (`{ currency, amount, exchangeRate, rateSource, rateDate }`)
+  - `exchangeRate`: optional custom rate (trip currency per unit of `currency`); without it the NBP mid rate from the last table published on or before `date` is used
   - `date`: YYYY-MM-DD
   - `icon`: one of the plan icons, defaults to `savings`
   - `paidBy`: user id of a trip member

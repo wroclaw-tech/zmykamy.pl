@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { PLAN_ICONS } from "../db/schema";
+import { currencySchema } from "./user";
 
 const MAX_AMOUNT = 100_000_000;
 
@@ -7,13 +8,24 @@ const amountSchema = z.int().positive().max(MAX_AMOUNT);
 
 const userIdSchema = z.string().min(1);
 
+const exchangeRateSchema = z.number().positive().max(1_000_000);
+
 export const expenseParamSchema = z.object({ id: z.uuid(), expenseId: z.uuid() });
 
 export const paymentParamSchema = z.object({ id: z.uuid(), paymentId: z.uuid() });
 
+export const exchangeRateQuerySchema = z.object({
+  currency: currencySchema,
+  date: z.iso.date().optional(),
+});
+
+// `amount` is in `currency` (the trip's currency when omitted on create). Without
+// `exchangeRate` the NBP mid rate from the expense date is used.
 export const createExpenseSchema = z.object({
   title: z.string().trim().min(1).max(120),
   amount: amountSchema,
+  currency: currencySchema.optional(),
+  exchangeRate: exchangeRateSchema.optional(),
   date: z.iso.date(),
   icon: z.enum(PLAN_ICONS).default("savings"),
   paidBy: userIdSchema,
@@ -21,6 +33,7 @@ export const createExpenseSchema = z.object({
 });
 
 export const updateExpenseSchema = createExpenseSchema
+  .extend({ exchangeRate: exchangeRateSchema.nullable() })
   .partial()
   .refine((body) => Object.keys(body).length > 0, "At least one field is required");
 

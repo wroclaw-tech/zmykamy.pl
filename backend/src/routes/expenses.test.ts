@@ -1,9 +1,10 @@
-import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { trip, tripMember, user } from "../db/schema";
 import app from "../index";
-import { createTrip, createUser, request, type TestUser } from "./test-helpers";
+import { clearExchangeRateCache } from "../lib/exchange-rates";
+import { createTrip, createUser, mockNbp, request, type TestUser } from "./test-helpers";
 
 beforeAll(() => {
   if (!process.env.DATABASE_URL?.endsWith("_test")) {
@@ -191,6 +192,130 @@ describe("expenses", () => {
       method: "DELETE",
     });
     expect(response.status).toBe(404);
+  });
+});
+
+type ExpenseResponse = {
+  amount: number;
+  shares: { amount: number }[];
+  original: {
+    currency: string;
+    amount: number;
+    exchangeRate: number;
+    rateSource: "nbp" | "custom";
+    rateDate: string | null;
+  } | null;
+};
+
+describe("foreign currency expenses", () => {
+  let fetchSpy: ReturnType<typeof mockNbp>;
+
+  beforeEach(() => {
+    clearExchangeRateCache();
+    fetchSpy = mockNbp();
+  });
+
+  afterEach(() => fetchSpy.mockRestore());
+
+  const addForeign = async (as: TestUser, tripId: string, extra: Record<string, unknown>) => {
+    const response = await request(`/trips/${tripId}/expenses`, as, {
+      method: "POST",
+      body: { ...dinner(as.id, [as.id]), ...extra },
+    });
+    return {
+      status: response.status,
+      body: (await response.json()) as ExpenseResponse & { id: string },
+    };
+  };
+
+  test("converts to the trip currency at the NBP mid rate", async () => {
+    const { kuba, ola, id } = await setup();
+    const { status, body } = await addForeign(kuba, id, {
+      amount: 42500,
+      currency: "PLN",
+      participants: [kuba.id, ola.id],
+    });
+    expect(status).toBe(201);
+    expect(body.amount).toBe(10000);
+    expect(body.shares.map((share) => share.amount)).toEqual([5000, 5000]);
+    expect(body.original).toMatchObject({
+      currency: "PLN",
+      amount: 42500,
+      rateSource: "nbp",
+      rateDate: "2026-05-08",
+    });
+    expect(body.original!.exchangeRate).toBeCloseTo(1 / 4.25);
+  });
+
+  test("uses a custom rate when given", async () => {
+    const { kuba, id } = await setup();
+    const { body } = await addForeign(kuba, id, {
+      amount: 10000,
+      currency: "USD",
+      exchangeRate: 0.9,
+    });
+    expect(body.amount).toBe(9000);
+    expect(body.original).toMatchObject({
+      rateSource: "custom",
+      exchangeRate: 0.9,
+      rateDate: null,
+    });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  test("stores amounts in the trip currency as they are", async () => {
+    const { kuba, id } = await setup();
+    const { body } = await addForeign(kuba, id, { currency: "EUR" });
+    expect(body.amount).toBe(9000);
+    expect(body.original).toBeNull();
+  });
+
+  test("rejects currencies without an NBP rate", async () => {
+    const { kuba, id } = await setup();
+    const { status, body } = await addForeign(kuba, id, { currency: "XAU" });
+    expect(status).toBe(422);
+    expect(body).toMatchObject({ error: { code: "unsupported_currency" } });
+  });
+
+  test("recomputes the amount on edits", async () => {
+    const { kuba, id } = await setup();
+    const { body: created } = await addForeign(kuba, id, { amount: 10000, currency: "USD" });
+    expect(created.amount).toBe(9412);
+    const patch = async (body: unknown) =>
+      (await (
+        await request(`/trips/${id}/expenses/${created.id}`, kuba, { method: "PATCH", body })
+      ).json()) as ExpenseResponse;
+
+    expect((await patch({ amount: 20000 })).amount).toBe(18824);
+    expect((await patch({ exchangeRate: 1 })).amount).toBe(20000);
+    expect((await patch({ date: "2027-05-14" })).original).toMatchObject({
+      rateSource: "custom",
+      exchangeRate: 1,
+    });
+    expect((await patch({ exchangeRate: null })).original).toMatchObject({ rateSource: "nbp" });
+    const local = await patch({ currency: "EUR", amount: 5000 });
+    expect(local.amount).toBe(5000);
+    expect(local.original).toBeNull();
+  });
+
+  test("leaves the amount alone when only other fields change", async () => {
+    const { kuba, id } = await setup();
+    const { body: created } = await addForeign(kuba, id, { amount: 10000, currency: "USD" });
+    fetchSpy.mockClear();
+    await request(`/trips/${id}/expenses/${created.id}`, kuba, {
+      method: "PATCH",
+      body: { title: "Obiad" },
+    });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  test("returns the rate for a day", async () => {
+    const { kuba, id } = await setup();
+    const response = await request(`/trips/${id}/exchange-rate?currency=usd&date=2026-05-10`, kuba);
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { from: string; to: string; rate: number };
+    expect(body).toMatchObject({ from: "USD", to: "EUR", effectiveDate: "2026-05-08" });
+    expect(body.rate).toBeCloseTo(4 / 4.25);
   });
 });
 
