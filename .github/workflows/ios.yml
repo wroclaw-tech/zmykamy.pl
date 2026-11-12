@@ -35,6 +35,7 @@ jobs:
         run: scripts/xcode.sh unit
 
       - name: UI tests
+        timeout-minutes: 15
         run: scripts/xcode.sh ui
 
       - name: Upload test results

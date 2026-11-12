@@ -42,6 +42,8 @@ run_tests() {
     local simulator
     simulator=${SIMULATOR:-$(pick_simulator)}
     rm -rf "$RESULTS/$name.xcresult"
+    # Boot up front so a slow simulator start doesn't count against the tests.
+    xcrun simctl bootstatus "$simulator" -b >/dev/null
     xcodebuild test \
         -project "$PROJECT" \
         -scheme "$SCHEME" \
@@ -56,7 +58,9 @@ shift || true
 
 case $command in
     unit) run_tests unit -only-testing:zmykamy.plTests "$@" ;;
-    ui) run_tests ui -only-testing:zmykamy.plUITests "$@" ;;
+    # Parallel UI testing boots simulator clones, which hang on CI runners. A hung test fails after the allowance.
+    ui) run_tests ui -only-testing:zmykamy.plUITests -parallel-testing-enabled NO \
+        -test-timeouts-enabled YES -default-test-execution-time-allowance 180 "$@" ;;
     test) run_tests all "$@" ;;
     release)
         xcodebuild build \
