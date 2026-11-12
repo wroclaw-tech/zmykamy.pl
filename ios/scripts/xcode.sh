@@ -20,10 +20,11 @@ RESULTS=${RESULTS:-build/results}
 # The newest available iPhone simulator, so the script works whatever runtimes are installed.
 pick_simulator() {
     xcrun simctl list devices available --json | python3 -c '
-import json, sys
+import json, re, sys
 devices = json.load(sys.stdin)["devices"]
+# Runtime ids look like "...SimRuntime.iOS-27-2", sometimes with a device suffix ("iOS-27-2-iPhone19").
 def version(runtime):
-    return [int(part) for part in runtime.rsplit("iOS-", 1)[1].split("-")]
+    return [int(part) for part in re.search(r"\.iOS-(\d+(?:-\d+)*)", runtime).group(1).split("-")]
 iphones = [
     (version(runtime), device["udid"])
     for runtime, list in devices.items() if ".iOS-" in runtime
@@ -38,7 +39,8 @@ print(max(iphones)[1])
 run_tests() {
     local name=$1
     shift
-    local simulator=${SIMULATOR:-$(pick_simulator)}
+    local simulator
+    simulator=${SIMULATOR:-$(pick_simulator)}
     rm -rf "$RESULTS/$name.xcresult"
     xcodebuild test \
         -project "$PROJECT" \
