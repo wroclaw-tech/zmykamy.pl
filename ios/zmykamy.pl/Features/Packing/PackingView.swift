@@ -370,6 +370,7 @@ struct PackingView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     let auth = AuthStore()
     let item = { (id: String, scope: PackingScope, name: String, assignee: String?, isPacked: Bool) in
@@ -393,3 +394,4 @@ struct PackingView: View {
         item("11", .shared, "Parasol plażowy", nil, false),
     ]]))
 }
+#endif

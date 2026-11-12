@@ -3,7 +3,7 @@
 Monorepo for a mobile app for planning group trips.
 
 - `backend/` — Bun + Hono API (see `backend/CLAUDE.md`)
-- `ios/` — iOS app
+- `ios/` — SwiftUI iOS app (see `ios/AGENTS.md`)
 - `web/` — nginx container for zmykamy.pl (landing page, universal links)
 - `docs/` — product docs
 

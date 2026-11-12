@@ -7,10 +7,9 @@ nonisolated final class AuthClient: Sendable {
     private let baseURL: URL
     private let session: URLSession
 
-    init(baseURL: URL = APIConfiguration.authBaseURL) {
+    init(baseURL: URL = APIConfiguration.authBaseURL, configuration: URLSessionConfiguration = .ephemeral) {
         self.baseURL = baseURL
         // Sending cookies would make Better Auth enforce an Origin check that a native app can't satisfy.
-        let configuration = URLSessionConfiguration.ephemeral
         configuration.httpCookieStorage = nil
         configuration.httpShouldSetCookies = false
         configuration.httpCookieAcceptPolicy = .never

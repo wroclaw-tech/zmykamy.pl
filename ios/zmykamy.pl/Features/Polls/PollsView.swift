@@ -369,6 +369,7 @@ struct PollsView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     let auth = AuthStore()
     let today = LocalDate(.now)
@@ -410,3 +411,4 @@ struct PollsView: View {
         ),
     ]]))
 }
+#endif

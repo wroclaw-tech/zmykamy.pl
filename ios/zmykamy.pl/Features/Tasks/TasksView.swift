@@ -284,6 +284,7 @@ struct TasksView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     let auth = AuthStore()
     let today = LocalDate(.now)
@@ -313,3 +314,4 @@ struct TasksView: View {
     ]]))
     .environment(PackingStore(api: AuthorizedAPI(auth: auth)))
 }
+#endif
