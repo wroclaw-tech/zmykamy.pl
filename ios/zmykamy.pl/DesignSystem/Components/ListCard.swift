@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ListCard<Content: View>: View {
     var separatorInset: CGFloat = 0
+    var cornerRadius: CGFloat = Radius.xl
     @ViewBuilder let content: Content
 
     var body: some View {
@@ -18,6 +19,6 @@ struct ListCard<Content: View>: View {
                 }
             }
         }
-        .background(.neutralWhite, in: .rect(cornerRadius: Radius.xl))
+        .background(.neutralWhite, in: .rect(cornerRadius: cornerRadius))
     }
 }

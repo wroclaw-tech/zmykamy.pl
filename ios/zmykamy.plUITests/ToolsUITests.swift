@@ -33,6 +33,25 @@ final class ToolsUITests: XCTestCase {
         capture(app, "foreign-expense")
     }
 
+    @MainActor func testTappingTheNbpRateLetsYouEnterYourOwn() {
+        let app = launch()
+        app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Kalkulator walut")).firstMatch.tap()
+        XCTAssertTrue(app.buttons["Dodaj jako wydatek"].waitForExistence(timeout: 10))
+        app.buttons["Dodaj jako wydatek"].tap()
+        let nbpRow = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Kurs średni NBP")).firstMatch
+        XCTAssertTrue(nbpRow.waitForExistence(timeout: 10))
+
+        nbpRow.tap()
+        let rate = app.textFields["Kurs za 1 EUR"]
+        XCTAssertTrue(rate.waitForExistence(timeout: 5))
+        app.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 8) + "4")
+
+        XCTAssertEqual(rate.value as? String, "4")
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "≈ 100")).firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Wróć do kursu NBP"].exists)
+        capture(app, "foreign-expense-custom-rate")
+    }
+
     @MainActor func testUnitConverterChangesCategoryAndSwapsDirection() {
         let app = launch()
         app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Jednostki")).firstMatch.tap()

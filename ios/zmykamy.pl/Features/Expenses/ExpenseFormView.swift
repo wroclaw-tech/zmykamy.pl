@@ -16,6 +16,9 @@ struct ExpenseFormView: View {
     @State private var customRateText: String
     @State private var usesCustomRate: Bool
     @State private var isChoosingCurrency = false
+    @State private var isPickingDate = false
+    @State private var isPickingCategory = false
+    @State private var isShowingScanInfo = false
     @State private var amountText: String
     @State private var title: String
     @State private var paidBy: String
@@ -112,18 +115,10 @@ struct ExpenseFormView: View {
                     Group {
                         amountHeader
                         titleField
+                        detailsRow
                         currencyCard
                         payerPicker
                         splitList
-                        FormCard(title: "Kiedy?") {
-                            FormFieldRow {
-                                DatePicker("Dzień", selection: $date, displayedComponents: .date)
-                                    .typography(.bodyRegular)
-                            }
-                        }
-                        FormCard(title: "Kategoria") {
-                            PlanIconPicker(selection: $icon)
-                        }
                     }
                     .disabled(!isEditable)
                     if !isEditable {
@@ -181,6 +176,23 @@ struct ExpenseFormView: View {
         .sheet(isPresented: $isChoosingCurrency) {
             NavigationStack { CurrencyPickerView(selection: $currency) }
         }
+        .sheet(isPresented: $isPickingCategory) {
+            NavigationStack {
+                ScrollView { PlanIconPicker(selection: $icon).padding(Spacing.gutter) }
+                    .navigationTitle("Kategoria")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button(role: .confirm) { isPickingCategory = false }
+                        }
+                    }
+            }
+            .presentationDetents([.medium])
+            .tint(theme.accent)
+        }
+        .alert("Skanowanie paragonów już wkrótce", isPresented: $isShowingScanInfo) {
+            Button("OK", role: .cancel) {}
+        }
         .task(id: rateKey) { await loadRate() }
         .refreshRatesOnReconnect { await loadRate() }
         .onChange(of: currency) { _, _ in usesCustomRate = false }
@@ -193,7 +205,7 @@ struct ExpenseFormView: View {
 
     private var amountHeader: some View {
         VStack(spacing: Spacing.s4) {
-            HStack(alignment: .firstTextBaseline, spacing: Spacing.s6) {
+            HStack(alignment: .firstTextBaseline, spacing: Spacing.s12) {
                 TextField("0", text: $amountText)
                     .keyboardType(.decimalPad)
                     .focused($isAmountFocused)
@@ -203,7 +215,7 @@ struct ExpenseFormView: View {
                     .fixedSize()
                     .accessibilityLabel("Kwota")
                 Text(currencySymbol)
-                    .typography(.title1)
+                    .typography(.displayCurrency)
                     .foregroundStyle(.neutralGray2)
             }
             .frame(maxWidth: .infinity)
@@ -230,16 +242,80 @@ struct ExpenseFormView: View {
             Image(.edit)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 20, height: 20)
+                .frame(width: 22, height: 22)
                 .foregroundStyle(.neutralGray)
             TextField("Opis", text: $title, prompt: Text("Na co?"))
                 .typography(.bodyLarge)
                 .foregroundStyle(.neutralInk)
                 .textInputAutocapitalization(.sentences)
+            // Receipt scanning comes with ZMY-51
+            Button { isShowingScanInfo = true } label: {
+                HStack(spacing: 5) {
+                    Image(.photoCamera)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 18, height: 18)
+                    Text("Skanuj")
+                        .typography(.subheadEmphasis)
+                }
+                .foregroundStyle(theme.accentStrong)
+                .padding(.leading, 9)
+                .padding(.trailing, 11)
+                .frame(height: 32)
+                .background(theme.accentTint, in: .capsule)
+            }
+            .buttonStyle(.plain)
         }
-        .padding(.horizontal, Spacing.s16)
+        .padding(.leading, Spacing.s16)
+        .padding(.trailing, 10)
         .frame(height: 52)
         .background(.neutralWhite, in: .rect(cornerRadius: Radius.md))
+    }
+
+    private var detailsRow: some View {
+        HStack(spacing: Spacing.s8) {
+            detailChip(icon: .calendarToday, text: date.formatted(.dateTime.day().month(.abbreviated).locale(calendar.locale ?? .current))) {
+                isPickingDate = true
+            }
+            .accessibilityLabel("Dzień: \(date.formatted(date: .long, time: .omitted))")
+            .popover(isPresented: $isPickingDate) {
+                DatePicker("Dzień", selection: $date, displayedComponents: .date)
+                    .datePickerStyle(.graphical)
+                    .labelsHidden()
+                    .padding(Spacing.s12)
+                    .frame(width: 340)
+                    .presentationCompactAdaptation(.popover)
+                    .tint(theme.accent)
+            }
+            detailChip(icon: icon.resource, text: icon.label) { isPickingCategory = true }
+                .accessibilityLabel("Kategoria: \(icon.label)")
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func detailChip(icon: ImageResource, text: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: Spacing.s6) {
+                Image(icon)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 18, height: 18)
+                    .foregroundStyle(theme.accent)
+                Text(text)
+                    .typography(.calloutEmphasis)
+                    .foregroundStyle(.neutralInk)
+                    .lineLimit(1)
+                Image(.expandMore)
+                    .resizable()
+                    .frame(width: 18, height: 18)
+                    .foregroundStyle(.neutralGray)
+            }
+            .padding(.leading, Spacing.s14)
+            .padding(.trailing, Spacing.s8)
+            .frame(height: 42)
+            .background(.neutralWhite, in: .capsule)
+        }
+        .buttonStyle(.plain)
     }
 
     private var currencyCard: some View {
@@ -403,15 +479,22 @@ struct ExpenseFormView: View {
         let isViewer = member.userId == user.id
         return Button { paidBy = member.userId } label: {
             HStack(spacing: Spacing.s8) {
-                PersonAvatar(userID: member.userId, name: member.name, isViewer: isViewer, size: 30)
-                    .overlay { if isSelected { Circle().fill(.neutralWhite.opacity(0.25)) } }
+                if isSelected {
+                    Text(String(member.name.prefix(1)).uppercased())
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(.neutralWhite)
+                        .frame(width: 32, height: 32)
+                        .background(.neutralWhite.opacity(0.28), in: .circle)
+                } else {
+                    PersonAvatar(userID: member.userId, name: member.name, isViewer: isViewer, size: 32)
+                }
                 Text(isViewer ? "Ty" : member.name)
                     .typography(.calloutEmphasis)
                     .foregroundStyle(isSelected ? .neutralWhite : .neutralInk)
             }
-            .padding(.leading, Spacing.s4)
+            .padding(.leading, 5)
             .padding(.trailing, Spacing.s14)
-            .frame(height: 40)
+            .frame(height: 42)
             .background(isSelected ? theme.accent : .neutralWhite, in: .capsule)
         }
         .buttonStyle(.plain)
@@ -425,21 +508,27 @@ struct ExpenseFormView: View {
                     .typography(.sectionLabel)
                     .foregroundStyle(.neutralGray)
                 Spacer()
-                Button(participants.count == trip.members.count ? "Nikt" : "Wszyscy") {
+                Button(splitCountText) {
                     participants = participants.count == trip.members.count ? [] : Set(trip.members.map(\.userId))
                 }
                 .typography(.calloutEmphasis)
                 .foregroundStyle(theme.accentStrong)
+                .accessibilityHint(participants.count == trip.members.count ? "Odznacz wszystkich" : "Zaznacz wszystkich")
             }
             .padding(.horizontal, Spacing.s6)
             .padding(.top, Spacing.s8)
 
-            ListCard(separatorInset: Spacing.s14) {
+            ListCard(cornerRadius: Radius.lg) {
                 ForEach(members) { member in
                     splitRow(member)
                 }
             }
         }
+    }
+
+    // "Z" takes the genitive: "4 z 6 osób", "1 z 1 osoby"
+    private var splitCountText: String {
+        "\(participants.count) z \(trip.members.count) \(trip.members.count == 1 ? "osoby" : "osób")"
     }
 
     private func splitRow(_ member: TripMember) -> some View {
@@ -459,7 +548,7 @@ struct ExpenseFormView: View {
                     .foregroundStyle(.neutralInk)
                 Spacer()
                 Text(isIncluded ? MoneyFormat.string(minorUnits: shares[member.userId] ?? 0, currency: trip.currency) : "—")
-                    .typography(.subheadRegular)
+                    .typography(.calloutRegular)
                     .foregroundStyle(.neutralGray)
                 Group {
                     if isIncluded {
@@ -471,10 +560,10 @@ struct ExpenseFormView: View {
                             .strokeBorder(.neutralGray3, lineWidth: 1.5)
                     }
                 }
-                .frame(width: 22, height: 22)
+                .frame(width: 26, height: 26)
             }
             .padding(.horizontal, Spacing.s14)
-            .frame(height: 50)
+            .frame(height: 52)
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
