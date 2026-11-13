@@ -123,7 +123,9 @@ private struct TripRow: View {
     }
 }
 
-private struct NewTripRow: View {
+private struct ActionRow: View {
+    let title: String
+    let icon: ImageResource
     let action: () -> Void
     @Environment(\.theme) private var theme
 
@@ -134,12 +136,12 @@ private struct NewTripRow: View {
                     .strokeBorder(theme.accent.opacity(0.45), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
                     .frame(width: 54, height: 54)
                     .overlay {
-                        Image(.addRounded)
+                        Image(icon)
                             .resizable()
                             .frame(width: 24, height: 24)
                             .foregroundStyle(theme.accent)
                     }
-                Text("Nowy wyjazd")
+                Text(title)
                     .typography(Typography(size: 17, weight: .semibold))
                     .foregroundStyle(theme.accentStrong)
                 Spacer()
@@ -166,6 +168,8 @@ struct HomeView: View {
     @State private var polls: PollsStore
     @State private var isShowingAccount = false
     @State private var isCreatingTrip = false
+    @State private var isScanningInvite = false
+    @State private var scannedInvite: String?
     @State private var openTrip: Trip?
     @State private var createdTrip: Trip?
     @State private var loadError: String?
@@ -191,7 +195,10 @@ struct HomeView: View {
                 .navigationTitle("Wyjazdy")
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button("Nowy wyjazd", image: .addRounded) { isCreatingTrip = true }
+                        Menu("Dodaj", image: .addRounded) {
+                            Button("Nowy wyjazd", image: .addRounded) { isCreatingTrip = true }
+                            Button("Dołącz przez kod QR", image: .qrCodeScanner) { isScanningInvite = true }
+                        }
                     }
                     ToolbarSpacer(.fixed, placement: .topBarTrailing)
                     ToolbarItem(placement: .topBarTrailing) {
@@ -222,6 +229,11 @@ struct HomeView: View {
         .sheet(item: Bindable(inviteRouter).pending, onDismiss: openCreatedTrip) { invite in
             InviteJoinView(code: invite.code) { joined in
                 createdTrip = joined
+            }
+        }
+        .fullScreenCover(isPresented: $isScanningInvite, onDismiss: openScannedInvite) {
+            InviteScannerView { slug in
+                scannedInvite = slug
             }
         }
         .fullScreenCover(item: $openTrip) { trip in
@@ -265,6 +277,8 @@ struct HomeView: View {
                 } actions: {
                     Button("Utwórz wyjazd") { isCreatingTrip = true }
                         .buttonStyle(.glassProminent)
+                    Button("Dołącz przez kod QR") { isScanningInvite = true }
+                        .buttonStyle(.glass)
                 }
             } else {
                 list(sections, today: today)
@@ -289,7 +303,8 @@ struct HomeView: View {
                     ForEach(sections.planned) { trip in
                         tripButton(trip, today: today)
                     }
-                    NewTripRow { isCreatingTrip = true }
+                    ActionRow(title: "Nowy wyjazd", icon: .addRounded) { isCreatingTrip = true }
+                    ActionRow(title: "Dołącz przez kod QR", icon: .qrCodeScanner) { isScanningInvite = true }
                 }
 
                 if !sections.past.isEmpty {
@@ -318,6 +333,13 @@ struct HomeView: View {
     private func openCreatedTrip() {
         openTrip = createdTrip
         createdTrip = nil
+    }
+
+    /// Runs after the scanner is gone, since the invite sheet can't be presented on top of it.
+    private func openScannedInvite() {
+        guard let scannedInvite else { return }
+        inviteRouter.open(code: scannedInvite)
+        self.scannedInvite = nil
     }
 
     private func load() async {
