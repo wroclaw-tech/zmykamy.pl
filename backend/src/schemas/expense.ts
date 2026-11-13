@@ -1,14 +1,19 @@
 import { z } from "zod";
 import { PLAN_ICONS } from "../db/schema";
+import { roundRate } from "../lib/exchange-rates";
 import { currencySchema } from "./user";
 
-const MAX_AMOUNT = 100_000_000;
+export const MAX_AMOUNT = 100_000_000;
 
 const amountSchema = z.int().positive().max(MAX_AMOUNT);
 
 const userIdSchema = z.string().min(1);
 
-const exchangeRateSchema = z.number().positive().max(1_000_000);
+const exchangeRateSchema = z
+  .number()
+  .positive()
+  .max(1_000_000)
+  .refine((rate) => roundRate(rate) === rate, "At most 6 decimal places");
 
 export const expenseParamSchema = z.object({ id: z.uuid(), expenseId: z.uuid() });
 

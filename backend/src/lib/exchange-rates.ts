@@ -8,6 +8,8 @@ const BASE_CURRENCY = "PLN";
 // Table A is published every business day, table B (exotic currencies) once a week
 const LOOKBACK_DAYS = { a: 10, b: 21 } as const;
 const DAY_MS = 24 * 60 * 60 * 1000;
+// Rates are kept to 6 decimal places so the server and the app convert amounts identically
+const RATE_SCALE = 1_000_000;
 
 const nbpResponseSchema = z.object({
   rates: z.array(z.object({ effectiveDate: z.iso.date(), mid: z.number().positive() })).min(1),
@@ -101,15 +103,23 @@ export const getExchangeRate = async (
     source.table && target.table && source.table !== target.table
       ? "A/B"
       : (source.table ?? target.table);
-  return { rate: source.mid / target.mid, effectiveDate, table };
+  return { rate: roundRate(source.mid / target.mid), effectiveDate, table };
 };
 
 const getMinorUnitDigits = (currency: string) =>
   new Intl.NumberFormat("en", { style: "currency", currency }).resolvedOptions()
     .maximumFractionDigits ?? 2;
 
-// Converts an amount in minor units of `from` to minor units of `to`
-export const convertAmount = (amount: number, from: string, to: string, rate: number) =>
-  Math.round(amount * rate * 10 ** (getMinorUnitDigits(to) - getMinorUnitDigits(from)));
+export const roundRate = (rate: number) => Math.round(rate * RATE_SCALE) / RATE_SCALE;
+
+// Converts an amount in minor units of `from` to minor units of `to`, rounding half up.
+// Uses integer arithmetic on the rate in millionths, the same as the iOS app.
+export const convertAmount = (amount: number, from: string, to: string, rate: number) => {
+  const shift = getMinorUnitDigits(to) - getMinorUnitDigits(from);
+  const numerator =
+    BigInt(amount) * BigInt(Math.round(rate * RATE_SCALE)) * 10n ** BigInt(Math.max(shift, 0));
+  const denominator = BigInt(RATE_SCALE) * 10n ** BigInt(Math.max(-shift, 0));
+  return Number((2n * numerator + denominator) / (2n * denominator));
+};
 
 export const clearExchangeRateCache = () => cache.clear();

@@ -81,6 +81,19 @@ describe("convertAmount", () => {
     expect(convertAmount(1000, "EUR", "PLN", 4.25)).toBe(4250);
   });
 
+  // The same cases are in the iOS CurrencyToolsTests, both sides must agree
+  test.each([
+    [125, "EUR", "PLN", 4.26, 533],
+    [1, "EUR", "PLN", 0.5, 1],
+    [3, "EUR", "PLN", 0.5, 2],
+    [2500, "JPY", "PLN", 0.0265, 6625],
+    [2125, "KWD", "PLN", 13.1, 2784],
+    [100, "PLN", "JPY", 37.7358, 38],
+    [100_000_000, "EUR", "PLN", 1_000_000, 100_000_000_000_000],
+  ])("rounds %d %s to %s at %d half up", (amount, from, to, rate, expected) => {
+    expect(convertAmount(amount, from, to, rate)).toBe(expected);
+  });
+
   test("accounts for currencies without minor units", () => {
     expect(convertAmount(10_000, "JPY", "PLN", 0.025)).toBe(25_000);
     expect(convertAmount(10_000, "PLN", "JPY", 40)).toBe(4000);
