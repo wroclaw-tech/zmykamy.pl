@@ -53,6 +53,10 @@ struct ExpenseRow: View {
                 Text(MoneyFormat.string(minorUnits: expense.amount, currency: currency))
                     .typography(.bodyEmphasis)
                     .foregroundStyle(.neutralInk)
+                if let original = expense.original {
+                    Text(MoneyFormat.string(minorUnits: original.amount, currency: original.currency))
+                        .typography(.captionRegular).foregroundStyle(.neutralGray)
+                }
                 Text(myShare > 0 ? "Twój udział \(MoneyFormat.string(minorUnits: myShare, currency: currency))" : "Bez Ciebie")
                     .typography(.captionEmphasis)
                     .foregroundStyle(myShare > 0 && expense.paidBy.userId != userID ? .statusDanger : .neutralGray)

@@ -4,6 +4,7 @@ struct IconBadge<Foreground: ShapeStyle, Background: ShapeStyle>: View {
     let image: ImageResource
     let foreground: Foreground
     let background: Background
+    var size: CGFloat = 34
 
     var body: some View {
         Image(image)
@@ -11,7 +12,7 @@ struct IconBadge<Foreground: ShapeStyle, Background: ShapeStyle>: View {
             .scaledToFit()
             .frame(width: 20, height: 20)
             .foregroundStyle(foreground)
-            .frame(width: 34, height: 34)
+            .frame(width: size, height: size)
             .background(background, in: .rect(cornerRadius: Radius.xs))
     }
 }

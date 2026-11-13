@@ -103,10 +103,14 @@ private struct CountdownCard: View {
     }
 }
 
-private struct ToolTile<Destination: View>: View {
+struct ToolTile<Destination: View>: View {
     let icon: ImageResource
     let title: String
     let subtitle: String?
+    var height: CGFloat = 108
+    var cornerRadius: CGFloat = Radius.lg
+    var iconSize: CGFloat = 34
+    var warning = false
     @ViewBuilder let destination: Destination
     @Environment(\.theme) private var theme
 
@@ -115,7 +119,7 @@ private struct ToolTile<Destination: View>: View {
             destination
         } label: {
             VStack(alignment: .leading, spacing: 0) {
-                IconBadge(image: icon, foreground: theme.accent, background: theme.accentTint)
+                IconBadge(image: icon, foreground: theme.accent, background: theme.accentTint, size: iconSize)
                 Spacer(minLength: Spacing.s8)
                 Text(title)
                     .typography(.calloutEmphasis)
@@ -124,13 +128,13 @@ private struct ToolTile<Destination: View>: View {
                     .minimumScaleFactor(0.8)
                 Text(subtitle ?? " ")
                     .typography(.footnote)
-                    .foregroundStyle(.neutralGray)
+                    .foregroundStyle(warning ? .statusWarning : .neutralGray)
                     .lineLimit(1)
             }
             .padding(Spacing.s14)
-            .frame(maxWidth: .infinity, minHeight: 108, alignment: .leading)
-            .background(.neutralWhite, in: .rect(cornerRadius: Radius.lg))
-            .contentShape(.rect(cornerRadius: Radius.lg))
+            .frame(maxWidth: .infinity, minHeight: height, alignment: .leading)
+            .background(.neutralWhite, in: .rect(cornerRadius: cornerRadius))
+            .contentShape(.rect(cornerRadius: cornerRadius))
         }
         .buttonStyle(.plain)
     }
@@ -240,6 +244,9 @@ struct TripOverviewView: View {
                     subtitle: PolishPlural.form(noteCount, one: "1 notatka", few: "\(noteCount) notatki", many: "\(noteCount) notatek")
                 ) {
                     NotesView(trip: trip, user: user)
+                }
+                ToolTile(icon: .currencyExchange, title: "Narzędzia", subtitle: "Waluty i jednostki") {
+                    ToolsView(trip: trip, user: user)
                 }
             }
         }

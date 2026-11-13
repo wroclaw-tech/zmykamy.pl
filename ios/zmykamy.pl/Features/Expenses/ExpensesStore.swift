@@ -5,11 +5,14 @@ final class ExpensesStore {
     private(set) var lists: [Trip.ID: [Expense]] = [:]
     private(set) var settlements: [Trip.ID: Settlement] = [:]
 
+    let rates: ExchangeRatesStore
+
     private let api: AuthorizedAPI
     private let trips: TripsStore
 
     init(api: AuthorizedAPI, trips: TripsStore) {
         self.api = api
+        self.rates = ExchangeRatesStore(api: api)
         self.trips = trips
     }
 

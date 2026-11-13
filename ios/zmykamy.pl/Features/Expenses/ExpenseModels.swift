@@ -20,6 +20,7 @@ nonisolated struct Expense: Codable, Equatable, Identifiable, Sendable {
     let paidBy: ExpensePerson
     let shares: [ExpenseShare]
     let author: ExpensePerson?
+    var original: OriginalExpense? = nil
 
     func share(of userID: String) -> Int {
         shares.first { $0.userId == userID }?.amount ?? 0
@@ -35,6 +36,21 @@ nonisolated struct ExpenseList: Codable, Equatable, Sendable {
     var expenses: [Expense]
 }
 
+nonisolated struct OriginalExpense: Codable, Equatable, Sendable {
+    let currency: String
+    let amount: Int
+    let exchangeRate: Double
+    let rateSource: String
+    let rateDate: LocalDate?
+    let rateTable: String?
+}
+
+nonisolated struct ExpenseDraft: Identifiable {
+    let id = UUID()
+    let amount: Int
+    let currency: String
+}
+
 nonisolated struct ExpenseRequest: Encodable, Sendable {
     let title: String
     let amount: Int
@@ -42,6 +58,25 @@ nonisolated struct ExpenseRequest: Encodable, Sendable {
     let icon: PlanIcon
     let paidBy: String
     let participants: [String]
+    var currency: String? = nil
+    // nil omits the field; .some(nil) switches an edited expense back to NBP.
+    var exchangeRate: Double?? = nil
+
+    private enum CodingKeys: String, CodingKey {
+        case title, amount, date, icon, paidBy, participants, currency, exchangeRate
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(title, forKey: .title)
+        try c.encode(amount, forKey: .amount)
+        try c.encode(date, forKey: .date)
+        try c.encode(icon, forKey: .icon)
+        try c.encode(paidBy, forKey: .paidBy)
+        try c.encode(participants, forKey: .participants)
+        try c.encodeIfPresent(currency, forKey: .currency)
+        if let exchangeRate { try c.encode(exchangeRate, forKey: .exchangeRate) }
+    }
 }
 
 nonisolated struct PaymentDetails: Codable, Equatable, Sendable {
@@ -161,10 +196,22 @@ nonisolated struct ExpenseSummary: Equatable, Sendable {
 nonisolated enum MoneyFormat {
     private static let locale = Locale(identifier: "pl_PL")
 
+    static func digits(for currency: String) -> Int {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = currency
+        return formatter.maximumFractionDigits
+    }
+
+    static func scale(for currency: String) -> Decimal {
+        pow(Decimal(10), digits(for: currency))
+    }
+
     static func string(minorUnits: Int, currency: String) -> String {
-        let value = Decimal(minorUnits) / 100
+        let value = Decimal(minorUnits) / scale(for: currency)
         let style = Decimal.FormatStyle.Currency(code: currency).locale(locale)
-        return minorUnits % 100 == 0 ? value.formatted(style.precision(.fractionLength(0))) : value.formatted(style)
+        return value == Decimal(NSDecimalNumber(decimal: value).intValue)
+            ? value.formatted(style.precision(.fractionLength(0))) : value.formatted(style)
     }
 
     static func symbol(currency: String) -> String {
@@ -176,26 +223,47 @@ nonisolated enum MoneyFormat {
     }
 
     static func precise(minorUnits: Int, currency: String) -> String {
-        (Decimal(minorUnits) / 100).formatted(.currency(code: currency).locale(locale))
+        (Decimal(minorUnits) / scale(for: currency)).formatted(.currency(code: currency).locale(locale))
     }
 
-    static func minorUnits(from text: String) -> Int? {
-        let cleaned = text
-            .replacingOccurrences(of: " ", with: "")
+    static func decimal(from text: String) -> Decimal? {
+        let cleaned = text.replacingOccurrences(of: " ", with: "")
             .replacingOccurrences(of: "\u{00A0}", with: "")
             .replacingOccurrences(of: ",", with: ".")
-        guard !cleaned.isEmpty, let value = Decimal(string: cleaned, locale: Locale(identifier: "en_US_POSIX")), value > 0 else {
-            return nil
-        }
+        guard !cleaned.isEmpty, cleaned.allSatisfy({ "0123456789.-".contains($0) }),
+              cleaned.filter({ $0 == "." }).count <= 1,
+              cleaned.filter({ $0 == "-" }).count <= 1,
+              !cleaned.contains("-") || cleaned.hasPrefix("-"),
+              let value = Decimal(string: cleaned, locale: Locale(identifier: "en_US_POSIX")),
+              !value.isNaN else { return nil }
+        return value
+    }
+
+    static func minorUnits(from text: String, currency: String = "PLN") -> Int? {
+        guard let value = decimal(from: text), value > 0 else { return nil }
+        let cleaned = text.replacingOccurrences(of: ",", with: ".")
         let parts = cleaned.split(separator: ".", omittingEmptySubsequences: false)
-        guard parts.count <= 2, (parts.count < 2 || parts[1].count <= 2) else { return nil }
-        var scaled = value * 100
+        guard parts.count <= 2, parts.count < 2 || parts[1].count <= digits(for: currency) else { return nil }
+        return roundedMinorUnits(value * scale(for: currency))
+    }
+
+    static func roundedMinorUnits(_ value: Decimal) -> Int? {
+        guard !value.isNaN else { return nil }
+        var source = value
         var rounded = Decimal()
-        NSDecimalRound(&rounded, &scaled, 0, .plain)
+        NSDecimalRound(&rounded, &source, 0, .plain)
+        guard rounded >= 0, rounded <= Decimal(Int.max) else { return nil }
         return NSDecimalNumber(decimal: rounded).intValue
     }
 
-    static func input(minorUnits: Int) -> String {
-        minorUnits % 100 == 0 ? "\(minorUnits / 100)" : String(format: "%d,%02d", minorUnits / 100, minorUnits % 100)
+    static func convert(_ amount: Int, from: String, to: String, rate: Double) -> Int? {
+        guard rate.isFinite, rate > 0 else { return nil }
+        return roundedMinorUnits(Decimal(amount) / scale(for: from) * Decimal(rate) * scale(for: to))
+    }
+
+    static func input(minorUnits: Int, currency: String = "PLN") -> String {
+        let value = Decimal(minorUnits) / scale(for: currency)
+        let digits = value == Decimal(NSDecimalNumber(decimal: value).intValue) ? 0 : digits(for: currency)
+        return value.formatted(.number.locale(locale).grouping(.never).precision(.fractionLength(digits)))
     }
 }

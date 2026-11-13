@@ -8,6 +8,14 @@ struct ExpenseFormView: View {
     @Environment(ExpensesStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @Environment(\.theme) private var theme
+    @State private var currency: String
+    @State private var loadedRateKey: String?
+    @State private var quote: RateQuote?
+    @State private var rateError: String?
+    @State private var isLoadingRate = false
+    @State private var customRateText: String
+    @State private var usesCustomRate: Bool
+    @State private var isChoosingCurrency = false
     @State private var amountText: String
     @State private var title: String
     @State private var paidBy: String
@@ -20,11 +28,16 @@ struct ExpenseFormView: View {
     @State private var isShowingError = false
     @FocusState private var isAmountFocused: Bool
 
-    init(trip: Trip, user: AuthUser, expense: Expense? = nil) {
+    init(trip: Trip, user: AuthUser, expense: Expense? = nil, draft: ExpenseDraft? = nil) {
         self.trip = trip
         self.user = user
         self.expense = expense
-        _amountText = State(initialValue: expense.map { MoneyFormat.input(minorUnits: $0.amount) } ?? "")
+        let enteredCurrency = expense?.original?.currency ?? draft?.currency ?? trip.currency
+        let enteredAmount = expense?.original?.amount ?? expense?.amount ?? draft?.amount
+        _currency = State(initialValue: enteredCurrency)
+        _amountText = State(initialValue: enteredAmount.map { MoneyFormat.input(minorUnits: $0, currency: enteredCurrency) } ?? "")
+        _usesCustomRate = State(initialValue: expense?.original?.rateSource == "custom")
+        _customRateText = State(initialValue: expense?.original.map { String($0.exchangeRate).replacingOccurrences(of: ".", with: ",") } ?? "")
         _title = State(initialValue: expense?.title ?? "")
         _paidBy = State(initialValue: expense?.paidBy.userId ?? user.id)
         _participants = State(initialValue: Set(expense?.shares.map(\.userId) ?? trip.members.map(\.userId)))
@@ -51,23 +64,40 @@ struct ExpenseFormView: View {
     }
 
     private var amount: Int? {
-        MoneyFormat.minorUnits(from: amountText)
+        MoneyFormat.minorUnits(from: amountText, currency: currency)
     }
+
+    private var exchangeRate: Double? {
+        if currency == trip.currency { return 1 }
+        if usesCustomRate {
+            guard let decimal = MoneyFormat.decimal(from: customRateText) else { return nil }
+            let rate = NSDecimalNumber(decimal: decimal).doubleValue
+            return rate.isFinite && rate > 0 && rate <= 1_000_000 ? rate : nil
+        }
+        return loadedRateKey == rateKey ? quote?.value.rate : nil
+    }
+
+    private var convertedAmount: Int? {
+        guard let amount, let exchangeRate else { return nil }
+        return MoneyFormat.convert(amount, from: currency, to: trip.currency, rate: exchangeRate)
+    }
+
+    private var rateKey: String { "\(currency)-\(LocalDate(date, calendar: calendar).rawValue)" }
 
     private var trimmedTitle: String {
         title.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private var shares: [String: Int] {
-        ExpenseSplit.evenly(amount ?? 0, between: Array(participants))
+        ExpenseSplit.evenly(convertedAmount ?? 0, between: Array(participants))
     }
 
     private var canSave: Bool {
-        isEditable && amount != nil && !trimmedTitle.isEmpty && !participants.isEmpty && !isSaving
+        isEditable && (amount ?? 0) <= 100_000_000 && (convertedAmount ?? 0) > 0 && (convertedAmount ?? 0) <= Int(Int32.max) && !trimmedTitle.isEmpty && !participants.isEmpty && !isSaving && (usesCustomRate || !isLoadingRate)
     }
 
     private var currencySymbol: String {
-        MoneyFormat.symbol(currency: trip.currency)
+        MoneyFormat.symbol(currency: currency)
     }
 
     var body: some View {
@@ -77,6 +107,7 @@ struct ExpenseFormView: View {
                     Group {
                         amountHeader
                         titleField
+                        currencyCard
                         payerPicker
                         splitList
                         FormCard(title: "Kiedy?") {
@@ -142,8 +173,14 @@ struct ExpenseFormView: View {
         .environment(\.locale, calendar.locale ?? .current)
         .tint(theme.accent)
         .interactiveDismissDisabled(isSaving)
+        .sheet(isPresented: $isChoosingCurrency) {
+            NavigationStack { CurrencyPickerView(selection: $currency) }
+        }
+        .task(id: rateKey) { await loadRate() }
+        .refreshRatesOnReconnect { await loadRate() }
+        .onChange(of: currency) { _, _ in usesCustomRate = false }
         .task {
-            guard expense == nil else { return }
+            guard expense == nil, amountText.isEmpty else { return }
             try? await Task.sleep(for: .milliseconds(500))
             isAmountFocused = true
         }
@@ -168,7 +205,7 @@ struct ExpenseFormView: View {
             .contentShape(.rect)
             .onTapGesture { isAmountFocused = true }
             Text(perPersonText)
-                .typography(.footnote)
+                .typography(.subheadRegular)
                 .foregroundStyle(.neutralGray)
         }
         .padding(.vertical, Spacing.s16)
@@ -176,8 +213,10 @@ struct ExpenseFormView: View {
 
     private var perPersonText: String {
         guard !participants.isEmpty else { return "Wybierz, na kogo dzielimy" }
-        let perPerson = (amount ?? 0) / participants.count
-        return "\(MoneyFormat.string(minorUnits: perPerson, currency: trip.currency)) na osobę · \(participants.count) os."
+        guard let convertedAmount else { return "Wybierz kurs przeliczenia" }
+        let perPerson = Int((Double(convertedAmount) / Double(participants.count)).rounded())
+        let prefix = currency == trip.currency ? "" : "≈ \(MoneyFormat.precise(minorUnits: convertedAmount, currency: trip.currency)) · "
+        return prefix + "\(MoneyFormat.string(minorUnits: perPerson, currency: trip.currency)) na osobę · \(participants.count) os."
     }
 
     private var titleField: some View {
@@ -195,6 +234,92 @@ struct ExpenseFormView: View {
         .padding(.horizontal, Spacing.s16)
         .frame(height: 52)
         .background(.neutralWhite, in: .rect(cornerRadius: Radius.md))
+    }
+
+    private var currencyCard: some View {
+        VStack(alignment: .leading, spacing: Spacing.s12) {
+            ListCard(separatorInset: Spacing.s14) {
+                HStack(spacing: Spacing.s12) {
+                    IconBadge(image: .currencyExchange, foreground: theme.accent, background: theme.accentTint)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Waluta wydatku").typography(.bodyRegular)
+                        Text("Waluta wyjazdu: \(trip.currency)").typography(.footnote).foregroundStyle(.neutralGray)
+                    }
+                    Spacer(minLength: 0)
+                    Button { isChoosingCurrency = true } label: {
+                        HStack(spacing: Spacing.s4) {
+                            Text("\(currency) · \(currencySymbol)")
+                            Image(systemName: "chevron.down").font(.caption2)
+                        }
+                        .typography(.subheadEmphasis)
+                        .padding(.horizontal, Spacing.s12).padding(.vertical, Spacing.s8)
+                        .background(theme.accentTint, in: .capsule)
+                    }
+                    .accessibilityLabel("Waluta wydatku: \(currency)")
+                }
+                .padding(Spacing.s14)
+                if currency != trip.currency {
+                    HStack(spacing: Spacing.s12) {
+                        IconBadge(image: .accountBalance, foreground: theme.accent, background: theme.accentTint)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(usesCustomRate ? "Własny kurs" : "Kurs średni NBP").typography(.bodyRegular)
+                            if let quote, !usesCustomRate {
+                                Text([quote.value.table.map { "Tabela \($0)" }, quote.value.dateLabel].compactMap { $0 }.joined(separator: " · "))
+                                    .typography(.footnote).foregroundStyle(.neutralGray)
+                            }
+                        }
+                        Spacer(minLength: 0)
+                        if isLoadingRate && !usesCustomRate {
+                            ProgressView()
+                        } else if let exchangeRate {
+                            VStack(alignment: .trailing, spacing: 0) {
+                                Text("\(exchangeRate.formatted(.number.locale(Locale(identifier: "pl_PL")).precision(.fractionLength(4)))) \(MoneyFormat.symbol(currency: trip.currency))")
+                                    .typography(.bodyEmphasis)
+                                Text("za 1 \(currencySymbol)").typography(.captionRegular).foregroundStyle(.neutralGray)
+                            }
+                        }
+                    }
+                    .padding(Spacing.s14)
+                }
+            }
+            if currency != trip.currency {
+                DisclosureGroup("Własny kurs", isExpanded: $usesCustomRate) {
+                    TextField("Kurs za 1 \(currency)", text: $customRateText)
+                        .keyboardType(.decimalPad).typography(.bodyRegular)
+                        .padding(Spacing.s12)
+                        .background(.neutralWhite, in: .rect(cornerRadius: Radius.sm))
+                }
+                .typography(.subheadRegular)
+                if !usesCustomRate, let rateError {
+                    Text(rateError).typography(.footnote).foregroundStyle(.statusDanger)
+                    Button("Spróbuj ponownie") { Task { await loadRate() } }.typography(.subheadEmphasis)
+                }
+                if quote?.isOffline == true && !usesCustomRate {
+                    Text("Kurs zapisany offline. Przy zapisie sprawdzimy kurs NBP ponownie.")
+                        .typography(.footnote).foregroundStyle(.neutralGray)
+                }
+            }
+        }
+    }
+
+    private func loadRate() async {
+        guard !Task.isCancelled else { return }
+        let requestedKey = rateKey
+        let requestedCurrency = currency
+        quote = nil
+        rateError = nil
+        guard currency != trip.currency else { isLoadingRate = false; return }
+        isLoadingRate = true
+        do {
+            let fetched = try await store.rates.quote(from: requestedCurrency, to: trip.currency, on: LocalDate(date, calendar: calendar), in: trip)
+            guard !Task.isCancelled, requestedKey == rateKey else { return }
+            quote = fetched
+            loadedRateKey = requestedKey
+        } catch {
+            guard !Task.isCancelled, requestedKey == rateKey else { return }
+            rateError = error.localizedDescription
+        }
+        if requestedKey == rateKey { isLoadingRate = false }
     }
 
     private var payerPicker: some View {
@@ -297,14 +422,16 @@ struct ExpenseFormView: View {
     }
 
     private func save() {
-        guard let amount else { return }
+        guard canSave, let amount else { return }
         let request = ExpenseRequest(
             title: trimmedTitle,
             amount: amount,
             date: LocalDate(date, calendar: calendar),
             icon: icon,
             paidBy: paidBy,
-            participants: participants.sorted()
+            participants: participants.sorted(),
+            currency: currency,
+            exchangeRate: usesCustomRate ? .some(exchangeRate) : expense == nil ? nil : .some(nil)
         )
         run { () async throws(APIError) in
             if let expense {
