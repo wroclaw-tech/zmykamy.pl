@@ -17,6 +17,7 @@ struct InviteScannerView: View {
     @State private var hasCheckedPermission = false
     @State private var scannedSlug: String?
     @State private var rejection: Rejection?
+    @State private var scannerFailed = false
 
     var body: some View {
         NavigationStack {
@@ -58,6 +59,19 @@ struct InviteScannerView: View {
                 }
                 .buttonStyle(.glassProminent)
             }
+        } else if scannerFailed {
+            unavailable(
+                title: "Nie udało się uruchomić skanowania",
+                description: "Aparat jest chwilowo niedostępny. Spróbuj ponownie."
+            ) {
+                Button("Spróbuj ponownie") {
+                    Task {
+                        await permissions.refresh()
+                        scannerFailed = false
+                    }
+                }
+                .buttonStyle(.glassProminent)
+            }
         } else if !QRScannerView.isAvailable {
             unavailable(
                 title: "Skanowanie niedostępne",
@@ -66,7 +80,10 @@ struct InviteScannerView: View {
                 EmptyView()
             }
         } else {
-            QRScannerView(isScanning: scannedSlug == nil, onScan: handle)
+            QRScannerView(isScanning: scannedSlug == nil, onScan: handle, onUnavailable: {
+                rejection = nil
+                scannerFailed = true
+            })
                 .ignoresSafeArea()
                 .overlay(alignment: .bottom) { hint }
                 .accessibilityLabel("Podgląd aparatu")
