@@ -196,6 +196,7 @@ describe("expenses", () => {
 });
 
 type ExpenseResponse = {
+  title: string;
   amount: number;
   shares: { amount: number }[];
   original: {
@@ -299,7 +300,7 @@ describe("foreign currency expenses", () => {
         await request(`/trips/${id}/expenses/${created.id}`, kuba, { method: "PATCH", body })
       ).json()) as ExpenseResponse;
 
-    expect((await patch({ amount: 20000 })).amount).toBe(18824);
+    expect((await patch({ amount: 20000, currency: "USD" })).amount).toBe(18824);
     const custom = await patch({ exchangeRate: 1 });
     expect(custom.amount).toBe(20000);
     expect(custom.original?.rateTable).toBeNull();
@@ -325,6 +326,92 @@ describe("foreign currency expenses", () => {
       body: { title: "Obiad" },
     });
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  const patchExpense = async (as: TestUser, tripId: string, expenseId: string, body: unknown) => {
+    const response = await request(`/trips/${tripId}/expenses/${expenseId}`, as, {
+      method: "PATCH",
+      body,
+    });
+    return { status: response.status, body: (await response.json()) as ExpenseResponse };
+  };
+
+  test("keeps the amount when a client without currencies edits the title", async () => {
+    const { kuba, id } = await setup();
+    const { body: created } = await addForeign(kuba, id, { amount: 10000, currency: "USD" });
+    const legacy = { ...dinner(kuba.id, [kuba.id]), title: "Obiad", amount: created.amount };
+    const { body } = await patchExpense(kuba, id, created.id, legacy);
+    expect(body.title).toBe("Obiad");
+    expect(body.amount).toBe(9412);
+    expect(body.original).toMatchObject({ currency: "USD", amount: 10000, rateSource: "nbp" });
+  });
+
+  test("reads a changed amount from a client without currencies as the trip currency", async () => {
+    const { kuba, id } = await setup();
+    const { body: created } = await addForeign(kuba, id, { amount: 10000, currency: "USD" });
+    const legacy = { ...dinner(kuba.id, [kuba.id]), amount: 12000 };
+    const { body } = await patchExpense(kuba, id, created.id, legacy);
+    expect(body.amount).toBe(12000);
+    expect(body.original).toBeNull();
+  });
+
+  test("keeps the stored NBP rate until the day changes", async () => {
+    const { kuba, id } = await setup();
+    const { body: created } = await addForeign(kuba, id, { amount: 10000, currency: "USD" });
+    fetchSpy.mockRestore();
+    fetchSpy = mockNbp({ USD: { table: "a", mid: 4.25, effectiveDate: "2026-05-09" } });
+    const form = { ...dinner(kuba.id, [kuba.id]), currency: "USD", exchangeRate: null };
+
+    const renamed = await patchExpense(kuba, id, created.id, {
+      ...form,
+      title: "Obiad",
+      amount: 10000,
+    });
+    expect(renamed.body.amount).toBe(9412);
+    expect(renamed.body.original).toMatchObject({ rateDate: "2026-05-08", rateTable: "A" });
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    const resized = await patchExpense(kuba, id, created.id, { ...form, amount: 20000 });
+    expect(resized.body.amount).toBe(18824);
+    expect(resized.body.original?.rateDate).toBe("2026-05-08");
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    const moved = await patchExpense(kuba, id, created.id, {
+      ...form,
+      amount: 20000,
+      date: "2027-05-14",
+    });
+    expect(moved.body.amount).toBe(20000);
+    expect(moved.body.original?.exchangeRate).toBe(1);
+  });
+
+  test("rejects converted amounts above the limit", async () => {
+    const { kuba, id } = await setup();
+    const huge = { amount: 100_000_000, currency: "USD", exchangeRate: 1_000_000 };
+    const { status, body } = await addForeign(kuba, id, huge);
+    expect(status).toBe(400);
+    expect(body).toMatchObject({ error: { code: "amount_too_large" } });
+
+    const atLimit = await addForeign(kuba, id, {
+      amount: 50_000_000,
+      currency: "USD",
+      exchangeRate: 2,
+    });
+    expect(atLimit.status).toBe(201);
+    expect(atLimit.body.amount).toBe(100_000_000);
+
+    const edited = await patchExpense(kuba, id, atLimit.body.id, { exchangeRate: 1_000_000 });
+    expect(edited.status).toBe(400);
+    expect(edited.body).toMatchObject({ error: { code: "amount_too_large" } });
+  });
+
+  test("rejects custom rates with more than 6 decimal places", async () => {
+    const { kuba, id } = await setup();
+    const { status } = await addForeign(kuba, id, {
+      currency: "USD",
+      exchangeRate: 4.1234567,
+    });
+    expect(status).toBe(400);
   });
 
   test("returns the rate for a day", async () => {

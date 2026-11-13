@@ -45,10 +45,10 @@ const nbpRates: Record<string, { table: "a" | "b"; mid: number; effectiveDate: s
 };
 
 // Stubs the NBP API with fixed mid rates
-export const mockNbp = () =>
+export const mockNbp = (overrides: Partial<typeof nbpRates> = {}) =>
   spyOn(globalThis, "fetch").mockImplementation((async (input: string | URL | Request) => {
     const [table, code] = String(input).split("/rates/")[1]!.split("/");
-    const rate = nbpRates[code!];
+    const rate = { ...nbpRates, ...overrides }[code!];
     if (!rate || rate.table !== table) {
       return new Response("404 NotFound - Not Found - Brak danych", { status: 404 });
     }

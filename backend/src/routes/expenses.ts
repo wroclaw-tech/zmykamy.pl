@@ -19,6 +19,7 @@ import {
   createPaymentSchema,
   exchangeRateQuerySchema,
   expenseParamSchema,
+  MAX_AMOUNT,
   paymentParamSchema,
   updateExpenseSchema,
 } from "../schemas/expense";
@@ -110,69 +111,112 @@ type AmountInput = {
   exchangeRate: number | null;
 };
 
+type RateInfo = {
+  exchangeRate: number;
+  rateSource: "nbp" | "custom";
+  rateDate: string | null;
+  rateTable: "A" | "B" | "A/B" | null;
+};
+
+const inTripCurrency = (amount: number) => ({
+  amount,
+  originalCurrency: null,
+  originalAmount: null,
+  exchangeRate: null,
+  rateSource: null,
+  rateDate: null,
+  rateTable: null,
+});
+
+// Converts a foreign amount at the given rate and returns the expense columns to store
+const convertAtRate = (tripCurrency: string, amount: number, currency: string, rate: RateInfo) => {
+  const converted = convertAmount(amount, currency, tripCurrency, rate.exchangeRate);
+  if (converted <= 0) {
+    throw new ApiError(400, "amount_too_small", "The converted amount must be positive");
+  }
+  if (converted > MAX_AMOUNT) {
+    throw new ApiError(400, "amount_too_large", "The converted amount is too large");
+  }
+  return { amount: converted, originalCurrency: currency, originalAmount: amount, ...rate };
+};
+
 // Converts the entered amount to the trip's currency and returns the expense columns to store
 const resolveAmount = async (tripCurrency: string, input: AmountInput) => {
   if (input.currency === tripCurrency) {
-    return {
-      amount: input.amount,
-      originalCurrency: null,
-      originalAmount: null,
-      exchangeRate: null,
-      rateSource: null,
+    return inTripCurrency(input.amount);
+  }
+  if (input.exchangeRate !== null) {
+    return convertAtRate(tripCurrency, input.amount, input.currency, {
+      exchangeRate: input.exchangeRate,
+      rateSource: "custom",
       rateDate: null,
       rateTable: null,
-    };
+    });
   }
-  const nbp =
-    input.exchangeRate === null
-      ? await getExchangeRate(input.currency, tripCurrency, input.date)
-      : null;
-  const exchangeRate = input.exchangeRate ?? nbp!.rate;
-  const amount = convertAmount(input.amount, input.currency, tripCurrency, exchangeRate);
-  if (amount <= 0) {
-    throw new ApiError(400, "amount_too_small", "The converted amount must be positive");
-  }
-  return {
-    amount,
-    originalCurrency: input.currency,
-    originalAmount: input.amount,
-    exchangeRate,
-    rateSource: nbp ? ("nbp" as const) : ("custom" as const),
-    rateDate: nbp?.effectiveDate ?? null,
-    rateTable: nbp?.table ?? null,
-  };
+  const nbp = await getExchangeRate(input.currency, tripCurrency, input.date);
+  return convertAtRate(tripCurrency, input.amount, input.currency, {
+    exchangeRate: nbp.rate,
+    rateSource: "nbp",
+    rateDate: nbp.effectiveDate,
+    rateTable: nbp.table,
+  });
 };
 
-// Recomputes the stored amount when the amount, currency, rate or date (for NBP rates) changes
-const resolveUpdatedAmount = (
+// Returns the money columns after an edit, or null when they stay as stored. Values are
+// compared rather than checking which fields were sent, because clients send the whole form.
+const resolveUpdatedAmount = async (
   tripCurrency: string,
   current: ExpenseRecord,
   patch: { amount?: number; currency?: string; exchangeRate?: number | null; date?: string },
 ) => {
-  const currency = patch.currency ?? current.originalCurrency ?? tripCurrency;
-  const keepsCustomRate = current.rateSource === "custom" && currency === current.originalCurrency;
-  const exchangeRate =
+  // Clients from before foreign currencies send `amount` in the trip currency without `currency`
+  if (patch.amount !== undefined && patch.currency === undefined) {
+    if (patch.amount !== current.amount) {
+      return inTripCurrency(patch.amount);
+    }
+    patch = { ...patch, amount: undefined };
+  }
+  const storedCurrency = current.originalCurrency ?? tripCurrency;
+  const storedAmount = current.originalAmount ?? current.amount;
+  const currency = patch.currency ?? storedCurrency;
+  const amount = patch.amount ?? storedAmount;
+  const date = patch.date ?? current.date;
+
+  if (currency === tripCurrency) {
+    return current.originalCurrency === null && amount === current.amount
+      ? null
+      : inTripCurrency(amount);
+  }
+  const sameCurrency = currency === current.originalCurrency;
+  const customRate =
     patch.exchangeRate !== undefined
       ? patch.exchangeRate
-      : keepsCustomRate
+      : sameCurrency && current.rateSource === "custom"
         ? current.exchangeRate
         : null;
-  const changesNbpRate =
-    patch.date !== undefined && patch.date !== current.date && exchangeRate === null;
-  if (
-    patch.amount === undefined &&
-    patch.currency === undefined &&
-    patch.exchangeRate === undefined &&
-    !changesNbpRate
-  ) {
-    return null;
+
+  if (customRate !== null) {
+    const unchanged =
+      sameCurrency &&
+      current.rateSource === "custom" &&
+      current.exchangeRate === customRate &&
+      amount === storedAmount;
+    return unchanged
+      ? null
+      : resolveAmount(tripCurrency, { amount, currency, date, exchangeRate: customRate });
   }
-  return resolveAmount(tripCurrency, {
-    amount: patch.amount ?? current.originalAmount ?? current.amount,
-    currency,
-    date: patch.date ?? current.date,
-    exchangeRate,
-  });
+  // Keep the stored NBP rate while the day stays the same, so a newer table doesn't reprice it
+  if (sameCurrency && current.rateSource === "nbp" && date === current.date) {
+    return amount === storedAmount
+      ? null
+      : convertAtRate(tripCurrency, amount, currency, {
+          exchangeRate: current.exchangeRate!,
+          rateSource: "nbp",
+          rateDate: current.rateDate,
+          rateTable: current.rateTable,
+        });
+  }
+  return resolveAmount(tripCurrency, { amount, currency, date, exchangeRate: null });
 };
 
 const buildSettlement = async (record: MemberTrip, viewerId: string) => {
