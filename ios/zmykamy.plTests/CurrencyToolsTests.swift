@@ -18,6 +18,20 @@ struct CurrencyToolsTests {
         #expect(MoneyFormat.minorUnits(from: "999999999999999999999999999999") == nil)
     }
 
+    // The same cases are in the backend's exchange-rates.test.ts, both sides must agree
+    @Test(arguments: [
+        (125, "EUR", "PLN", 4.26, 533),
+        (1, "EUR", "PLN", 0.5, 1),
+        (3, "EUR", "PLN", 0.5, 2),
+        (2500, "JPY", "PLN", 0.0265, 6625),
+        (2125, "KWD", "PLN", 13.1, 2784),
+        (100, "PLN", "JPY", 37.7358, 38),
+        (100_000_000, "EUR", "PLN", 1_000_000, 100_000_000_000_000),
+    ])
+    func roundsConversionsHalfUpLikeTheBackend(amount: Int, from: String, to: String, rate: Double, expected: Int) {
+        #expect(MoneyFormat.convert(amount, from: from, to: to, rate: rate) == expected)
+    }
+
     @Test func decodesForeignExpenseAndPreservesOriginalValues() throws {
         let data = Data(#"{"id":"e1","title":"Lody","amount":10675,"date":"2027-05-13","icon":"savings","paidBy":{"userId":"u1","name":"Kuba"},"shares":[],"author":null,"original":{"currency":"EUR","amount":2500,"exchangeRate":4.27,"rateSource":"nbp","rateDate":"2027-05-13","rateTable":"A"}}"#.utf8)
         let expense = try APIClient.decoder.decode(Expense.self, from: data)
@@ -167,8 +181,41 @@ struct ForeignExpensesStoreTests {
         let sent = try #require(backend.requests("PATCH", "trips/t1/expenses/e1").first?.json)
         #expect(sent["amount"] as? Int == 5000)
         #expect(sent["currency"] as? String == "EUR")
-        #expect(sent["exchangeRate"] is NSNull)
+        #expect(sent["exchangeRate"] == nil)
         #expect(store.expenses(for: trip)?.first?.original?.amount == 5000)
         #expect(store.expenses(for: trip)?.first?.amount == 21350)
+    }
+
+    @Test func renamingSendsOnlyTheTitleSoTheRateIsKept() async throws {
+        let original = try APIClient.decoder.decode(Expense.self, from: Data(originalJSON.utf8))
+        backend.on("GET", "trips/t1/expenses", returning: ExpenseList(expenses: [original]))
+        backend.on("GET", "trips/t1/settlement", json: #"{"balances":[],"transfers":[],"payments":[],"naiveTransferCount":0}"#)
+        backend.on("GET", "trips/t1", returning: trip)
+        let auth = backend.signedIn()
+        let store = ExpensesStore(api: backend.api(auth), trips: TripsStore(auth: auth, client: backend.apiClient))
+        try await store.load(trip)
+        backend.on("PATCH", "trips/t1/expenses/e1", json: originalJSON.replacingOccurrences(of: "\"Lody\"", with: "\"Gelato\""))
+        let request = ExpenseRequest(title: "Gelato", amount: 2500, date: original.date, icon: .savings, paidBy: "u1", participants: [], currency: "EUR", exchangeRate: .some(nil))
+
+        try await store.update(original, with: request, in: trip)
+
+        let sent = try #require(backend.requests("PATCH", "trips/t1/expenses/e1").first?.json)
+        #expect(sent.keys.sorted() == ["title"])
+        #expect(store.expenses(for: trip)?.first?.title == "Gelato")
+    }
+
+    @Test(arguments: [
+        (Double?.none, "EUR", [String]()),
+        (4.3, "EUR", ["exchangeRate"]),
+        (Double?.none, "USD", ["amount", "currency"]),
+    ])
+    func sendsTheRateOnlyWhenItChanges(rate: Double?, currency: String, expectedKeys: [String]) throws {
+        let original = try APIClient.decoder.decode(Expense.self, from: Data(originalJSON.utf8))
+        let request = ExpenseRequest(title: "Lody", amount: 2500, date: original.date, icon: .savings, paidBy: "u1", participants: [], currency: currency, exchangeRate: .some(rate))
+
+        let update = ExpenseUpdate(from: original, to: request, tripCurrency: "PLN")
+
+        let json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(update)) as! [String: Any]
+        #expect(json.keys.sorted() == expectedKeys)
     }
 }

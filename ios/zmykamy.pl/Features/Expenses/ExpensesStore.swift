@@ -47,8 +47,10 @@ final class ExpensesStore {
     }
 
     func update(_ expense: Expense, with request: ExpenseRequest, in trip: Trip) async throws(APIError) {
+        let changes = ExpenseUpdate(from: expense, to: request, tripCurrency: trip.currency)
+        guard !changes.isEmpty else { return }
         let updated: Expense = try await api.call { (client, token) throws(APIError) in
-            try await client.send("PATCH", "trips/\(trip.id)/expenses/\(expense.id)", body: request, token: token)
+            try await client.send("PATCH", "trips/\(trip.id)/expenses/\(expense.id)", body: changes, token: token)
         }
         change(trip) { list in
             guard let index = list.firstIndex(where: { $0.id == updated.id }) else { return }

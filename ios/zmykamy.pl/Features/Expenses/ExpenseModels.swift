@@ -79,6 +79,61 @@ nonisolated struct ExpenseRequest: Encodable, Sendable {
     }
 }
 
+/// Only the fields that changed in an edit, so the backend never reprices an expense that
+/// wasn't touched. `exchangeRate` of `.some(nil)` switches back to the NBP rate.
+nonisolated struct ExpenseUpdate: Encodable, Equatable, Sendable {
+    var title: String?
+    var amount: Int?
+    var currency: String?
+    var exchangeRate: Double??
+    var date: LocalDate?
+    var icon: PlanIcon?
+    var paidBy: String?
+    var participants: [String]?
+
+    var isEmpty: Bool { self == ExpenseUpdate() }
+
+    init() {}
+
+    init(from expense: Expense, to request: ExpenseRequest, tripCurrency: String) {
+        if request.title != expense.title { title = request.title }
+        if request.date != expense.date { date = request.date }
+        if request.icon != expense.icon { icon = request.icon }
+        if request.paidBy != expense.paidBy.userId { paidBy = request.paidBy }
+        if Set(request.participants) != Set(expense.shares.map(\.userId)) { participants = request.participants }
+
+        let enteredCurrency = request.currency ?? tripCurrency
+        let storedCurrency = expense.original?.currency ?? tripCurrency
+        let changesMoney = enteredCurrency != storedCurrency || request.amount != (expense.original?.amount ?? expense.amount)
+        if changesMoney {
+            amount = request.amount
+            currency = enteredCurrency
+        }
+        guard enteredCurrency != tripCurrency, let requestedRate = request.exchangeRate else { return }
+        let storedRate = expense.original?.rateSource == "custom" ? expense.original?.exchangeRate : nil
+        // The backend keeps a custom rate only for the same currency, so resend it when the currency changes
+        if requestedRate != storedRate || (requestedRate != nil && enteredCurrency != storedCurrency) {
+            exchangeRate = .some(requestedRate)
+        }
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case title, amount, currency, exchangeRate, date, icon, paidBy, participants
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encodeIfPresent(title, forKey: .title)
+        try c.encodeIfPresent(amount, forKey: .amount)
+        try c.encodeIfPresent(currency, forKey: .currency)
+        if let exchangeRate { try c.encode(exchangeRate, forKey: .exchangeRate) }
+        try c.encodeIfPresent(date, forKey: .date)
+        try c.encodeIfPresent(icon, forKey: .icon)
+        try c.encodeIfPresent(paidBy, forKey: .paidBy)
+        try c.encodeIfPresent(participants, forKey: .participants)
+    }
+}
+
 nonisolated struct PaymentDetails: Codable, Equatable, Sendable {
     let blikPhone: String?
     let iban: String?
@@ -256,9 +311,21 @@ nonisolated enum MoneyFormat {
         return NSDecimalNumber(decimal: rounded).intValue
     }
 
+    /// Largest amount the backend accepts, also after conversion to the trip currency.
+    static let maxAmount = 100_000_000
+    private static let rateScale: Double = 1_000_000
+
+    /// Rounds a rate to the 6 decimal places the backend keeps.
+    static func roundedRate(_ rate: Double) -> Double {
+        (rate * rateScale).rounded() / rateScale
+    }
+
+    /// Converts minor units of `from` into minor units of `to`, rounding half up. Works on the
+    /// rate in millionths with exact decimal arithmetic, the same as the backend.
     static func convert(_ amount: Int, from: String, to: String, rate: Double) -> Int? {
-        guard rate.isFinite, rate > 0 else { return nil }
-        return roundedMinorUnits(Decimal(amount) / scale(for: from) * Decimal(rate) * scale(for: to))
+        guard rate.isFinite, rate > 0, rate <= 1_000_000 else { return nil }
+        let micros = Decimal(Int((rate * rateScale).rounded()))
+        return roundedMinorUnits(Decimal(amount) * micros * scale(for: to) / (scale(for: from) * Decimal(rateScale)))
     }
 
     static func input(minorUnits: Int, currency: String = "PLN") -> String {
