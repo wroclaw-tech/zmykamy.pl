@@ -27,6 +27,7 @@ struct ExpenseFormView: View {
     @State private var errorMessage = ""
     @State private var isShowingError = false
     @FocusState private var isAmountFocused: Bool
+    @FocusState private var isRateFocused: Bool
 
     init(trip: Trip, user: AuthUser, expense: Expense? = nil, draft: ExpenseDraft? = nil) {
         self.trip = trip
@@ -242,8 +243,8 @@ struct ExpenseFormView: View {
     }
 
     private var currencyCard: some View {
-        VStack(alignment: .leading, spacing: Spacing.s12) {
-            ListCard(separatorInset: Spacing.s14) {
+        VStack(alignment: .leading, spacing: Spacing.s8) {
+            ListCard(separatorInset: 62) {
                 HStack(spacing: Spacing.s12) {
                     IconBadge(image: .currencyExchange, foreground: theme.accent, background: theme.accentTint)
                     VStack(alignment: .leading, spacing: 2) {
@@ -252,59 +253,113 @@ struct ExpenseFormView: View {
                     }
                     Spacer(minLength: 0)
                     Button { isChoosingCurrency = true } label: {
-                        HStack(spacing: Spacing.s4) {
+                        HStack(spacing: 2) {
                             Text("\(currency) · \(currencySymbol)")
-                            Image(systemName: "chevron.down").font(.caption2)
+                            Image(.expandMore)
+                                .resizable()
+                                .frame(width: 18, height: 18)
                         }
                         .typography(.subheadEmphasis)
-                        .padding(.horizontal, Spacing.s12).padding(.vertical, Spacing.s8)
+                        .foregroundStyle(theme.accentStrong)
+                        .padding(.leading, Spacing.s12)
+                        .padding(.trailing, Spacing.s8)
+                        .padding(.vertical, Spacing.s6)
                         .background(theme.accentTint, in: .capsule)
                     }
+                    .buttonStyle(.plain)
                     .accessibilityLabel("Waluta wydatku: \(currency)")
                 }
-                .padding(Spacing.s14)
+                .padding(.horizontal, Spacing.s14)
+                .padding(.vertical, 11)
                 if currency != trip.currency {
-                    HStack(spacing: Spacing.s12) {
-                        IconBadge(image: .accountBalance, foreground: theme.accent, background: theme.accentTint)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(usesCustomRate ? "Własny kurs" : "Kurs średni NBP").typography(.bodyRegular)
-                            if let quote, !usesCustomRate {
-                                Text([quote.value.table.map { "Tabela \($0)" }, quote.value.dateLabel].compactMap { $0 }.joined(separator: " · "))
-                                    .typography(.footnote).foregroundStyle(.neutralGray)
-                            }
-                        }
-                        Spacer(minLength: 0)
-                        if isLoadingRate && !usesCustomRate {
-                            ProgressView()
-                        } else if let exchangeRate {
-                            VStack(alignment: .trailing, spacing: 0) {
-                                Text("\(exchangeRate.formatted(.number.locale(Locale(identifier: "pl_PL")).precision(.fractionLength(4)))) \(MoneyFormat.symbol(currency: trip.currency))")
-                                    .typography(.bodyEmphasis)
-                                Text("za 1 \(currencySymbol)").typography(.captionRegular).foregroundStyle(.neutralGray)
-                            }
-                        }
+                    if usesCustomRate {
+                        rateRow
+                    } else {
+                        Button(action: startCustomRate) { rateRow }
+                            .buttonStyle(.plain)
+                            .accessibilityHint("Stuknij, aby wpisać własny kurs")
                     }
-                    .padding(Spacing.s14)
                 }
             }
             if currency != trip.currency {
-                DisclosureGroup("Własny kurs", isExpanded: $usesCustomRate) {
-                    TextField("Kurs za 1 \(currency)", text: $customRateText)
-                        .keyboardType(.decimalPad).typography(.bodyRegular)
-                        .padding(Spacing.s12)
-                        .background(.neutralWhite, in: .rect(cornerRadius: Radius.sm))
-                }
-                .typography(.subheadRegular)
-                if !usesCustomRate, let rateError {
+                if usesCustomRate {
+                    Button("Wróć do kursu NBP") { usesCustomRate = false }
+                        .typography(.subheadEmphasis)
+                        .foregroundStyle(theme.accentStrong)
+                        .padding(.horizontal, Spacing.s6)
+                } else if let rateError {
                     Text(rateError).typography(.footnote).foregroundStyle(.statusDanger)
-                    Button("Spróbuj ponownie") { Task { await loadRate() } }.typography(.subheadEmphasis)
-                }
-                if quote?.isOffline == true && !usesCustomRate {
+                        .padding(.horizontal, Spacing.s6)
+                    Button("Spróbuj ponownie") { Task { await loadRate() } }
+                        .typography(.subheadEmphasis)
+                        .padding(.horizontal, Spacing.s6)
+                } else if quote?.isOffline == true {
                     Text("Kurs zapisany offline. Przy zapisie sprawdzimy kurs NBP ponownie.")
                         .typography(.footnote).foregroundStyle(.neutralGray)
+                        .padding(.horizontal, Spacing.s6)
                 }
             }
         }
+    }
+
+    private var rateRow: some View {
+        HStack(spacing: Spacing.s12) {
+            IconBadge(image: .accountBalance, foreground: theme.accent, background: theme.accentTint)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(usesCustomRate ? "Własny kurs" : "Kurs średni NBP")
+                    .typography(.bodyRegular)
+                    .foregroundStyle(.neutralInk)
+                if let rateSubtitle {
+                    Text(rateSubtitle).typography(.footnote).foregroundStyle(.neutralGray)
+                }
+            }
+            Spacer(minLength: 0)
+            VStack(alignment: .trailing, spacing: 0) {
+                if usesCustomRate {
+                    HStack(spacing: Spacing.s4) {
+                        TextField("0,0000", text: $customRateText)
+                            .keyboardType(.decimalPad)
+                            .focused($isRateFocused)
+                            .multilineTextAlignment(.trailing)
+                            .frame(maxWidth: 96)
+                            .accessibilityLabel("Kurs za 1 \(currency)")
+                        Text(MoneyFormat.symbol(currency: trip.currency))
+                    }
+                    .typography(.calloutEmphasis)
+                    .foregroundStyle(.neutralInk)
+                } else if isLoadingRate {
+                    ProgressView()
+                } else if let exchangeRate {
+                    Text("\(Self.rateText(exchangeRate)) \(MoneyFormat.symbol(currency: trip.currency))")
+                        .typography(.calloutEmphasis)
+                        .foregroundStyle(.neutralInk)
+                }
+                if usesCustomRate || (!isLoadingRate && exchangeRate != nil) {
+                    Text("za 1 \(currencySymbol)").typography(.captionRegular).foregroundStyle(.neutralGray)
+                }
+            }
+        }
+        .padding(.horizontal, Spacing.s14)
+        .padding(.vertical, 11)
+        .contentShape(.rect)
+    }
+
+    private var rateSubtitle: String? {
+        if usesCustomRate { return "Zamiast kursu NBP" }
+        guard let quote else { return nil }
+        return [quote.value.table.map { "Tabela \($0)" }, quote.value.dateLabel].compactMap { $0 }.joined(separator: " · ")
+    }
+
+    private static func rateText(_ rate: Double) -> String {
+        rate.formatted(.number.locale(Locale(identifier: "pl_PL")).grouping(.never).precision(.fractionLength(4...6)))
+    }
+
+    private func startCustomRate() {
+        if customRateText.isEmpty, let rate = quote?.value.rate {
+            customRateText = Self.rateText(rate)
+        }
+        usesCustomRate = true
+        isRateFocused = true
     }
 
     private func loadRate() async {
