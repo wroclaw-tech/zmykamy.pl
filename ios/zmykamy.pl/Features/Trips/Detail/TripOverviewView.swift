@@ -104,25 +104,42 @@ private struct CountdownCard: View {
 }
 
 struct ToolTile<Destination: View>: View {
+    /// `.compact` for the trip overview, `.large` for the tools hub.
+    enum Style {
+        case compact, large
+    }
+
     let icon: ImageResource
     let title: String
     let subtitle: String?
-    var height: CGFloat = 108
-    var cornerRadius: CGFloat = Radius.lg
-    var iconSize: CGFloat = 34
+    var style = Style.compact
     var warning = false
     @ViewBuilder let destination: Destination
     @Environment(\.theme) private var theme
+
+    private var isLarge: Bool { style == .large }
+    private var cornerRadius: CGFloat { isLarge ? Radius.xl : Radius.lg }
 
     var body: some View {
         NavigationLink {
             destination
         } label: {
             VStack(alignment: .leading, spacing: 0) {
-                IconBadge(image: icon, foreground: theme.accent, background: theme.accentTint, size: iconSize)
-                Spacer(minLength: Spacing.s8)
+                IconBadge(
+                    image: icon,
+                    foreground: theme.accent,
+                    background: theme.accentTint,
+                    size: isLarge ? 40 : 34,
+                    iconSize: isLarge ? 22 : 20,
+                    cornerRadius: isLarge ? 12 : Radius.xs
+                )
+                if isLarge {
+                    Spacer().frame(height: Spacing.s12)
+                } else {
+                    Spacer(minLength: Spacing.s8)
+                }
                 Text(title)
-                    .typography(.calloutEmphasis)
+                    .typography(isLarge ? .bodyEmphasis : .calloutEmphasis)
                     .foregroundStyle(.neutralInk)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
@@ -130,9 +147,10 @@ struct ToolTile<Destination: View>: View {
                     .typography(.footnote)
                     .foregroundStyle(warning ? .statusWarning : .neutralGray)
                     .lineLimit(1)
+                    .padding(.top, isLarge ? 2 : 0)
             }
-            .padding(Spacing.s14)
-            .frame(maxWidth: .infinity, minHeight: height, alignment: .leading)
+            .padding(isLarge ? Spacing.s16 : Spacing.s14)
+            .frame(maxWidth: .infinity, minHeight: isLarge ? 122 : 108, alignment: .leading)
             .background(.neutralWhite, in: .rect(cornerRadius: cornerRadius))
             .contentShape(.rect(cornerRadius: cornerRadius))
         }
