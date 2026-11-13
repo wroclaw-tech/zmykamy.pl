@@ -71,7 +71,7 @@ struct ExpenseFormView: View {
         if currency == trip.currency { return 1 }
         if usesCustomRate {
             guard let decimal = MoneyFormat.decimal(from: customRateText) else { return nil }
-            let rate = NSDecimalNumber(decimal: decimal).doubleValue
+            let rate = MoneyFormat.roundedRate(NSDecimalNumber(decimal: decimal).doubleValue)
             return rate.isFinite && rate > 0 && rate <= 1_000_000 ? rate : nil
         }
         return loadedRateKey == rateKey ? quote?.value.rate : nil
@@ -92,8 +92,12 @@ struct ExpenseFormView: View {
         ExpenseSplit.evenly(convertedAmount ?? 0, between: Array(participants))
     }
 
+    private var isTooLarge: Bool {
+        (amount ?? 0) > MoneyFormat.maxAmount || (convertedAmount ?? 0) > MoneyFormat.maxAmount
+    }
+
     private var canSave: Bool {
-        isEditable && (amount ?? 0) <= 100_000_000 && (convertedAmount ?? 0) > 0 && (convertedAmount ?? 0) <= Int(Int32.max) && !trimmedTitle.isEmpty && !participants.isEmpty && !isSaving && (usesCustomRate || !isLoadingRate)
+        isEditable && !isTooLarge && (convertedAmount ?? 0) > 0 && !trimmedTitle.isEmpty && !participants.isEmpty && !isSaving && (usesCustomRate || !isLoadingRate)
     }
 
     private var currencySymbol: String {
@@ -206,12 +210,13 @@ struct ExpenseFormView: View {
             .onTapGesture { isAmountFocused = true }
             Text(perPersonText)
                 .typography(.subheadRegular)
-                .foregroundStyle(.neutralGray)
+                .foregroundStyle(isTooLarge ? Color.statusDanger : .neutralGray)
         }
         .padding(.vertical, Spacing.s16)
     }
 
     private var perPersonText: String {
+        guard !isTooLarge else { return currency == trip.currency ? "Kwota jest za duża" : "Kwota po przeliczeniu jest za duża" }
         guard !participants.isEmpty else { return "Wybierz, na kogo dzielimy" }
         guard let convertedAmount else { return "Wybierz kurs przeliczenia" }
         let perPerson = Int((Double(convertedAmount) / Double(participants.count)).rounded())
