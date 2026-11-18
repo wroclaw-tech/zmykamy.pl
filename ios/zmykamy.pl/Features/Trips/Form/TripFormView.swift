@@ -26,13 +26,13 @@ struct TripFormView: View {
     @State private var savedTrip: Trip?
     @State private var wizardTrip: Trip?
 
-    init(user: AuthUser, trip: Trip? = nil, onSaved: @escaping (Trip) -> Void = { _ in }) {
+    init(user: AuthUser, trip: Trip? = nil, destination: TripDestination? = nil, onSaved: @escaping (Trip) -> Void = { _ in }) {
         self.user = user
         self.trip = trip
         self.onSaved = onSaved
         let today = Calendar.current.startOfDay(for: .now)
-        _name = State(initialValue: trip?.name ?? "")
-        _destination = State(initialValue: trip?.destination)
+        _name = State(initialValue: trip?.name ?? destination?.name ?? "")
+        _destination = State(initialValue: trip?.destination ?? destination)
         _startDate = State(initialValue: trip?.startDate.date() ?? today)
         _endDate = State(initialValue: trip?.endDate.date() ?? today)
         _currency = State(initialValue: trip?.currency ?? user.defaultCurrency ?? "PLN")
