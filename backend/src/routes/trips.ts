@@ -19,6 +19,7 @@ import { getBalancesByTrip, getTripBalances } from "../lib/balances";
 import { ApiError } from "../lib/errors";
 import { generateInviteCode, toInviteSlug, toInviteUrl } from "../lib/invite";
 import { deleteFilesQuietly, fileExists, getDownloadUrl, getUploadUrl } from "../lib/storage";
+import { prepareCurrencyChange } from "../lib/trip-currency";
 import { getTripProgress } from "../lib/trip-progress";
 import { validate } from "../lib/validation";
 import { rateLimit } from "../middleware/rate-limit";
@@ -241,14 +242,22 @@ export const trips = new Hono<AppEnv>()
         await assertUploadedCover(id, coverImageKey);
       }
 
-      await db
-        .update(trip)
-        .set({
-          ...fields,
-          ...(destination !== undefined ? toDestinationColumns(destination) : {}),
-          ...(coverImageKey !== undefined ? { coverImageKey } : {}),
-        })
-        .where(eq(trip.id, id));
+      const applyCurrencyChange =
+        fields.currency && fields.currency !== current.currency
+          ? await prepareCurrencyChange(id, current.currency, fields.currency)
+          : null;
+
+      await db.transaction(async (tx) => {
+        await tx
+          .update(trip)
+          .set({
+            ...fields,
+            ...(destination !== undefined ? toDestinationColumns(destination) : {}),
+            ...(coverImageKey !== undefined ? { coverImageKey } : {}),
+          })
+          .where(eq(trip.id, id));
+        await applyCurrencyChange?.(tx);
+      });
 
       if (coverImageKey !== undefined && coverImageKey !== current.coverImageKey) {
         await deleteFilesQuietly([current.coverImageKey]);

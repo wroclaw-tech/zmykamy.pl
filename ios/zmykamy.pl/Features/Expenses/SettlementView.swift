@@ -47,7 +47,7 @@ struct SettlementView: View {
         .background { theme.background.ignoresSafeArea() }
         .navigationTitle("Rozliczenia")
         .navigationSubtitle(trip.name)
-        .task(id: trip.id) { try? await store.loadSettlement(trip) }
+        .task(id: [trip.id, trip.currency]) { try? await store.loadSettlement(trip) }
         .alert("Coś poszło nie tak", isPresented: $isShowingError) {
             Button("OK", role: .cancel) {}
         } message: {
