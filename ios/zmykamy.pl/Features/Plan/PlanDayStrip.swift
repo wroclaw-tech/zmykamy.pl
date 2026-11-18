@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Horizontal strip of trip days with the forecast when there is one; other days that
+/// Horizontal strip of trip days with the forecast, or the usual weather past it; other days that
 /// already have plan points show a dot.
 struct PlanDayStrip: View {
     let days: [LocalDate]
@@ -49,6 +49,19 @@ struct PlanDayStrip: View {
                     }
                     .foregroundStyle(isSelected ? .neutralWhite : .neutralInk2)
                     .accessibilityHidden(true)
+                } else if let typical = weather?.typical(on: day) {
+                    HStack(spacing: 2) {
+                        Image(typical.condition.icon)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 14, height: 14)
+                        Text(typical.temperatureText)
+                            .typography(.captionEmphasis)
+                            .monospacedDigit()
+                    }
+                    .foregroundStyle(isSelected ? .neutralWhite : .neutralInk2)
+                    .opacity(0.6)
+                    .accessibilityHidden(true)
                 } else {
                     Circle()
                         .fill(markedDays.contains(day) ? secondary : .clear)
@@ -66,6 +79,9 @@ struct PlanDayStrip: View {
 
     private func accessibilityLabel(for day: LocalDate) -> String {
         let date = PlanDateFormat.weekdayDayMonth(day, calendar: calendar)
+        if let typical = weather?.typical(on: day) {
+            return "\(date), zwykle \(typical.condition.label), \(typical.temperatureText)"
+        }
         guard let forecast = weather?.forecast(on: day) else { return date }
         return "\(date), \(forecast.condition.label), \(forecast.temperatureText)"
     }

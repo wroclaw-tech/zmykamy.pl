@@ -190,6 +190,15 @@ struct WeatherModelsTests {
         #expect(summary == .forecast(Self.day(0), next: [Self.day(1)]))
     }
 
+    @Test func usesTheUsualWeatherOnlyPastTheForecast() {
+        let typical = TypicalWeather(place: "Pekin", weatherCode: 0, temperatureMax: 28.6, temperatureMin: 15.2)
+        let weather = TripWeather(days: [Self.day(0), Self.day(1)], current: nil, typical: typical, forecastAvailableFrom: nil)
+
+        #expect(weather.typical(on: Self.start) == nil)
+        #expect(weather.typical(on: Self.start.adding(days: 1)) == nil)
+        #expect(weather.typical(on: Self.start.adding(days: 2)) == typical)
+    }
+
     @Test func showsTheUsualWeatherBeforeTheForecastReachesTheTrip() {
         let typical = TypicalWeather(place: "Pekin", weatherCode: 0, temperatureMax: 28.6, temperatureMin: 15.2)
         let weather = TripWeather(days: [], current: nil, typical: typical, forecastAvailableFrom: Self.start.adding(days: -15))

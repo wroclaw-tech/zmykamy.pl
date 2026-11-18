@@ -47,6 +47,10 @@ nonisolated struct TypicalWeather: Codable, Equatable, Sendable {
     var condition: WeatherCondition {
         WeatherCondition(code: weatherCode)
     }
+
+    var temperatureText: String {
+        "\(Int(temperatureMax.rounded()))°"
+    }
 }
 
 nonisolated struct TripWeather: Codable, Equatable, Sendable {
@@ -57,6 +61,13 @@ nonisolated struct TripWeather: Codable, Equatable, Sendable {
 
     func forecast(on date: LocalDate) -> DayWeather? {
         days.first { $0.date == date }
+    }
+
+    /// The usual weather for a day the forecast does not reach.
+    func typical(on date: LocalDate) -> TypicalWeather? {
+        guard forecast(on: date) == nil, let typical else { return nil }
+        if let lastForecast = days.last, date <= lastForecast.date { return nil }
+        return typical
     }
 
     /// What the trip's weather tile shows on `today`, or nil when there is nothing to show.
