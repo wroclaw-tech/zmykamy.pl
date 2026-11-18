@@ -12,6 +12,7 @@ const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
 
 export const RATE_LIMITS = {
+  auth: { limit: 120, windowMs: MINUTE },
   signIn: { limit: 20, windowMs: 15 * MINUTE },
   signUp: { limit: 10, windowMs: HOUR },
   invitePreview: { limit: 60, windowMs: MINUTE },

@@ -23,6 +23,7 @@ app.onError(handleError);
 app.notFound(handleNotFound);
 
 app.get("/", (c) => c.text("ok"));
+app.use("/auth/*", rateLimit("auth"));
 app.use("/auth/sign-in/*", rateLimit("signIn"));
 app.use("/auth/sign-up/*", rateLimit("signUp"));
 app.on(["GET", "POST"], "/auth/*", (c) => auth.handler(c.req.raw));

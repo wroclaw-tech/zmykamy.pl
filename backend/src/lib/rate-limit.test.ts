@@ -101,6 +101,17 @@ describe("auth limits", () => {
     await expectRateLimited(await authRequest(path, ip), windowMs);
     expect((await authRequest(path, randomIp())).status).not.toBe(429);
   });
+
+  test("limits every other auth endpoint per client ip", async () => {
+    const ip = randomIp();
+    const { limit, windowMs } = RATE_LIMITS.auth;
+
+    const responses = await repeat(limit, () => authRequest("/auth/change-password", ip));
+    expect(responses.every((response) => response.status !== 429)).toBe(true);
+
+    await expectRateLimited(await authRequest("/auth/change-password", ip), windowMs);
+    expect((await authRequest("/auth/change-password", randomIp())).status).not.toBe(429);
+  });
 });
 
 describe("invite limits", () => {
