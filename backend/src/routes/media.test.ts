@@ -29,6 +29,8 @@ type MediaResponse = {
   url: string;
   thumbnailUrl: string;
   takenAt: string;
+  source: string | null;
+  externalId: string | null;
   uploadedBy: { userId: string } | null;
 };
 
@@ -55,7 +57,12 @@ const getUploadTarget = async (as: TestUser, tripId: string, body: unknown) => {
 const put = (url: string, body: string, contentType: string) =>
   fetch(url, { method: "PUT", body, headers: { "Content-Type": contentType } });
 
-const uploadPhoto = async (as: TestUser, tripId: string, takenAt = "2027-05-14T10:00:00+01:00") => {
+const uploadPhoto = async (
+  as: TestUser,
+  tripId: string,
+  takenAt = "2027-05-14T10:00:00+01:00",
+  extra: Record<string, unknown> = {},
+) => {
   const target = await getUploadTarget(as, tripId, { kind: "photo", contentType: "image/jpeg" });
   await put(target.uploadUrl, "photo", "image/jpeg");
   await put(target.thumbnailUploadUrl, "thumb", "image/jpeg");
@@ -69,6 +76,7 @@ const uploadPhoto = async (as: TestUser, tripId: string, takenAt = "2027-05-14T1
       width: 4032,
       height: 3024,
       takenAt,
+      ...extra,
     },
   });
   return { response, target };
@@ -155,6 +163,35 @@ describe("gallery", () => {
       media: MediaResponse[];
     };
     expect(media.map((item) => item.takenAt.slice(0, 10))).toEqual(["2027-05-15", "2027-05-13"]);
+  });
+
+  test("remembers where imported media came from", async () => {
+    const { kuba, id } = await setup();
+    await uploadPhoto(kuba, id, undefined, { source: "google_photos", externalId: "g1" });
+    const { media } = (await (await request(`/trips/${id}/media`, kuba)).json()) as {
+      media: MediaResponse[];
+    };
+    expect(media[0]).toMatchObject({ source: "google_photos", externalId: "g1" });
+  });
+
+  test("rejects importing the same item twice into a trip", async () => {
+    const { kuba, ola, id } = await setup();
+    const external = { source: "google_photos", externalId: "g1" };
+    await uploadPhoto(kuba, id, undefined, external);
+    const { response, target } = await uploadPhoto(ola, id, undefined, external);
+    const { id: otherTrip } = await createTrip(kuba);
+    const elsewhere = await uploadPhoto(kuba, otherTrip, undefined, external);
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ error: { code: "media_already_imported" } });
+    expect(await fileExists(target.key)).toBe(false);
+    expect(elsewhere.response.status).toBe(201);
+  });
+
+  test("requires an external id together with the source", async () => {
+    const { kuba, id } = await setup();
+    const { response } = await uploadPhoto(kuba, id, undefined, { source: "google_photos" });
+    expect(response.status).toBe(400);
   });
 
   test("lets only the uploader or an organizer delete media", async () => {

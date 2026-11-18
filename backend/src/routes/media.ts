@@ -39,6 +39,8 @@ const toMediaResponse = (record: MediaRecord) => ({
   height: record.height,
   durationSeconds: record.durationSeconds,
   takenAt: record.takenAt,
+  source: record.source,
+  externalId: record.externalId,
   uploadedBy: record.uploader ? { userId: record.uploader.id, name: record.uploader.name } : null,
 });
 
@@ -97,8 +99,13 @@ export const gallery = new Hono<AppEnv>()
       const [created] = await db
         .insert(media)
         .values({ ...body, takenAt: new Date(takenAt), tripId: id, uploadedBy: userId })
+        .onConflictDoNothing()
         .returning({ id: media.id });
-      return c.json(toMediaResponse((await findMedia(created!.id, id))!), 201);
+      if (!created) {
+        await deleteFilesQuietly([body.key, body.thumbnailKey]);
+        throw new ApiError(409, "media_already_imported", "This item is already in the gallery");
+      }
+      return c.json(toMediaResponse((await findMedia(created.id, id))!), 201);
     },
   )
   .delete("/:id/media/:mediaId", validate("param", mediaParamSchema), async (c) => {
