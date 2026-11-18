@@ -103,53 +103,6 @@ private struct CountdownCard: View {
     }
 }
 
-/// The next days of the forecast at the places from the plan.
-private struct WeatherCard: View {
-    let days: [DayWeather]
-    let today: LocalDate
-    @Environment(\.theme) private var theme
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.s12) {
-            HStack(spacing: Spacing.s6) {
-                Text("Pogoda")
-                    .typography(.calloutEmphasis)
-                    .foregroundStyle(.neutralInk)
-                if let place = days.first?.place {
-                    Text(place)
-                        .typography(.subheadRegular)
-                        .foregroundStyle(.neutralGray)
-                        .lineLimit(1)
-                }
-            }
-            HStack(spacing: 0) {
-                ForEach(days, id: \.date) { day in
-                    VStack(spacing: Spacing.s4) {
-                        Text(day.date == today ? "Dziś" : PlanDateFormat.shortWeekday(day.date))
-                            .typography(.captionEmphasis)
-                            .foregroundStyle(day.date == today ? theme.accent : .neutralGray)
-                        Image(day.condition.icon)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 22, height: 22)
-                            .foregroundStyle(.neutralInk2)
-                        Text(day.temperatureText)
-                            .typography(.subheadEmphasis)
-                            .monospacedDigit()
-                            .foregroundStyle(.neutralInk)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("\(PlanDateFormat.weekdayDayMonth(day.date)): \(day.condition.label), \(day.temperatureText)\(day.place.map { ", \($0)" } ?? "")")
-                }
-            }
-        }
-        .padding(Spacing.s16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.neutralWhite, in: .rect(cornerRadius: Radius.lg))
-    }
-}
-
 struct ToolTile<Destination: View>: View {
     /// `.compact` for the trip overview, `.large` for the tools hub.
     enum Style {
@@ -226,11 +179,6 @@ struct TripOverviewView: View {
                 CountdownCard(trip: trip, today: LocalDate(.now))
                     .padding(.horizontal, Spacing.gutter)
                     .padding(.top, -28)
-                if !upcomingWeather.isEmpty {
-                    WeatherCard(days: upcomingWeather, today: LocalDate(.now))
-                        .padding(.horizontal, Spacing.gutter)
-                        .padding(.top, Spacing.s12)
-                }
                 tools
                     .padding(.horizontal, Spacing.gutter)
                     .padding(.top, Spacing.s12)
@@ -245,6 +193,7 @@ struct TripOverviewView: View {
         .task(id: trip.id) { try? await documents.load(trip) }
         .task(id: trip.id) { try? await trips.loadProgress(of: trip) }
         .task(id: trip.id) { await plans.loadWeather(trip) }
+        .task(id: trip.id) { try? await plans.load(trip) }
         .toolbar {
             if trip.isOrganizer {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -274,12 +223,25 @@ struct TripOverviewView: View {
         }
     }
 
-    private static let weatherDayCount = 5
-
-    private var upcomingWeather: [DayWeather] {
-        let today = LocalDate(.now)
-        let days = plans.weather(for: trip)?.days.filter { $0.date >= today } ?? []
-        return Array(days.prefix(Self.weatherDayCount))
+    @ViewBuilder
+    private var weatherAndPlace: some View {
+        let today = LocalDate(.now, calendar: user.calendar)
+        let summary = plans.weather(for: trip)?.summary(today: today, tripStart: trip.startDate)
+        let point = trip.phase(on: today) == .past ? nil : plans.plan(for: trip)?.nextLocatedPoint(at: .now, calendar: user.calendar)
+        if summary != nil || point != nil {
+            HStack(alignment: .top, spacing: Spacing.s12) {
+                if let summary {
+                    TripWeatherTile(summary: summary, calendar: user.calendar)
+                } else {
+                    Color.clear.frame(maxWidth: .infinity)
+                }
+                if let point, let coordinate = point.coordinate {
+                    TripPlaceTile(point: point, coordinate: coordinate)
+                } else {
+                    Color.clear.frame(maxWidth: .infinity)
+                }
+            }
+        }
     }
 
     private var tools: some View {
@@ -291,6 +253,7 @@ struct TripOverviewView: View {
             if !pinned.isEmpty {
                 PinnedNotesCard(notes: pinned, userID: user.id, isCompact: true) { _ in isShowingNotes = true }
             }
+            weatherAndPlace
             HStack(spacing: Spacing.s12) {
                 ToolTile(
                     icon: .confirmationNumber,

@@ -145,4 +145,122 @@ struct WeatherModelsTests {
 
         #expect(day.temperatureText == text)
     }
+
+    @Test func decodesCurrentAndTypicalWeather() throws {
+        let json = """
+        {"days":[],"current":{"date":"2027-05-14","place":"Lizbona","latitude":38.72,"longitude":-9.14,\
+        "temperature":24.3,"weatherCode":0},"typical":null,"forecastAvailableFrom":"2027-04-27"}
+        """
+        let weather = try APIClient.decoder.decode(TripWeather.self, from: Data(json.utf8))
+
+        #expect(weather.current?.temperatureText == "24°")
+        #expect(weather.typical == nil)
+        #expect(weather.forecastAvailableFrom == LocalDate(year: 2027, month: 4, day: 27))
+    }
+
+    private static let start = LocalDate(year: 2027, month: 5, day: 12)
+
+    private static func day(_ offset: Int, max: Double = 25) -> DayWeather {
+        DayWeather(
+            date: start.adding(days: offset),
+            place: "Lizbona",
+            latitude: 38.72,
+            longitude: -9.14,
+            weatherCode: 0,
+            temperatureMax: max,
+            temperatureMin: 15,
+            precipitationProbability: nil
+        )
+    }
+
+    @Test func showsNowAndTheNextThreeDaysDuringTheTrip() throws {
+        let current = CurrentWeather(date: Self.start.adding(days: 2), place: "Sintra", temperature: 24, weatherCode: 0)
+        let weather = TripWeather(days: (0...6).map { Self.day($0) }, current: current, typical: nil, forecastAvailableFrom: nil)
+
+        let summary = weather.summary(today: Self.start.adding(days: 2), tripStart: Self.start)
+
+        #expect(summary == .now(current, today: Self.day(2), next: [Self.day(3), Self.day(4), Self.day(5)]))
+    }
+
+    @Test func showsTheFirstTripDayOnceTheForecastReachesIt() {
+        let weather = TripWeather(days: [Self.day(0), Self.day(1)], current: nil, typical: nil, forecastAvailableFrom: nil)
+
+        let summary = weather.summary(today: Self.start.adding(days: -3), tripStart: Self.start)
+
+        #expect(summary == .forecast(Self.day(0), next: [Self.day(1)]))
+    }
+
+    @Test func showsTheUsualWeatherBeforeTheForecastReachesTheTrip() {
+        let typical = TypicalWeather(place: "Pekin", weatherCode: 0, temperatureMax: 28.6, temperatureMin: 15.2)
+        let weather = TripWeather(days: [], current: nil, typical: typical, forecastAvailableFrom: Self.start.adding(days: -15))
+
+        let summary = weather.summary(today: Self.start.adding(days: -40), tripStart: Self.start)
+
+        #expect(summary == .typical(typical, tripStart: Self.start, forecastLeadDays: 15))
+    }
+
+    @Test func showsNothingAfterTheTrip() {
+        let weather = TripWeather(days: [], current: nil, typical: nil, forecastAvailableFrom: nil)
+
+        #expect(weather.summary(today: Self.start.adding(days: 10), tripStart: Self.start) == nil)
+    }
+
+    @Test(arguments: [
+        (5, WeatherCondition.clear, "W maju zwykle słonecznie"),
+        (9, .rain, "We wrześniu zwykle deszczowo"),
+        (2, .snow, "W lutym zwykle śnieżnie"),
+    ])
+    func describesTheUsualWeatherInPolish(month: Int, condition: WeatherCondition, text: String) {
+        #expect(WeatherFormat.usually(condition, in: LocalDate(year: 2027, month: month, day: 1)) == text)
+    }
+
+    @Test(arguments: [
+        (15, "Noce ok. 14°. Prognoza będzie dostępna 15 dni przed wylotem."),
+        (1, "Noce ok. 14°. Prognoza będzie dostępna 1 dzień przed wylotem."),
+        (nil, "Noce ok. 14°."),
+    ] as [(Int?, String)])
+    func tellsWhenTheForecastArrives(leadDays: Int?, text: String) {
+        let typical = TypicalWeather(place: nil, weatherCode: 0, temperatureMax: 22, temperatureMin: 13.6)
+
+        #expect(WeatherFormat.typicalDetails(typical, forecastLeadDays: leadDays) == text)
+    }
+
+    @Test func formatsTheDailyRange() {
+        #expect(WeatherFormat.range(Self.day(0, max: 26.4)) == "Słonecznie · 26° / 15°")
+    }
+}
+
+struct TripPlaceTileTests {
+    private static let calendar: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Europe/Lisbon")!
+        return calendar
+    }()
+
+    private static let day = LocalDate(year: 2027, month: 5, day: 14)
+    private static let place = PlanCoordinate(latitude: 38.7, longitude: -9.1)
+
+    private static let plan = TripPlan(
+        points: [
+            .fixture("pena", on: day, at: PlanTime(hour: 10, minute: 30), coordinate: place),
+            .fixture("lunch", on: day, at: PlanTime(hour: 13, minute: 0)),
+            .fixture("dinner", on: day, at: PlanTime(hour: 20, minute: 0), coordinate: place),
+        ],
+        info: []
+    )
+
+    private static func at(_ hour: Int, on date: LocalDate = day) -> Date {
+        calendar.date(from: DateComponents(year: date.year, month: date.month, day: date.day, hour: hour))!
+    }
+
+    @Test(arguments: [(9, "pena"), (11, "dinner"), (21, "pena")])
+    func pointsToTheNextPlaceFromThePlan(hour: Int, expected: String) {
+        #expect(Self.plan.nextLocatedPoint(at: Self.at(hour), calendar: Self.calendar)?.id == expected)
+    }
+
+    @Test func pointsToNothingWithoutLocatedPlaces() {
+        let plan = TripPlan(points: [.fixture("lunch", on: Self.day, at: PlanTime(hour: 13, minute: 0))], info: [])
+
+        #expect(plan.nextLocatedPoint(at: Self.at(9), calendar: Self.calendar) == nil)
+    }
 }
