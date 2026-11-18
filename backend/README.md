@@ -16,7 +16,7 @@ The API listens on `http://localhost:3000` locally and on `https://api.zmykamy.p
 
 If port `5432` is taken, set `POSTGRES_PORT` in `.env` and update the port in `DATABASE_URL`.
 
-`bun run db:up` also starts [Garage](https://garagehq.deuxfleurs.fr) as local S3 storage on `http://localhost:3900`; the `garage-init` container creates the `zmykamy` bucket and the access key from `.env.example`. If port `3900` is taken, set `S3_PORT` in `.env` and update the port in `S3_ENDPOINT`. In production the `S3_*` variables point at the shared Garage instance.
+`bun run db:up` also starts [Garage](https://garagehq.deuxfleurs.fr) as local S3 storage on `http://localhost:3900`; the `garage-init` container creates the `zmykamy` bucket and the access key from `.env.example`. If port `3900` is taken, set `S3_PORT` in `.env` and update the port in `S3_ENDPOINT`. In production the `S3_*` variables point at the shared Garage instance. The bucket doesn't need to be public: clients upload and download through signed `/files/*` URLs on the API, which streams to and from the bucket.
 
 ## Endpoints
 

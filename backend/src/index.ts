@@ -8,6 +8,7 @@ import { rateLimit } from "./middleware/rate-limit";
 import { documents } from "./routes/documents";
 import { emailInvites, myEmailInvites } from "./routes/email-invites";
 import { expenses } from "./routes/expenses";
+import { files } from "./routes/files";
 import { invites } from "./routes/invites";
 import { gallery } from "./routes/media";
 import { packing } from "./routes/packing";
@@ -39,8 +40,10 @@ app.route("/trips", packing);
 app.route("/trips", tasks);
 app.route("/trips", polls);
 app.route("/trips", emailInvites);
+app.route("/files", files);
 app.route("/invites", invites);
 app.route("/email-invites", myEmailInvites);
 app.route("/", universalLinks);
 
-export default app;
+// Videos are uploaded through the file proxy, so allow bodies above the 128 MB default
+export default Object.assign(app, { maxRequestBodySize: 4 * 1024 ** 3 });

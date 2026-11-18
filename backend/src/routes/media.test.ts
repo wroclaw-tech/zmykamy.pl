@@ -55,7 +55,7 @@ const getUploadTarget = async (as: TestUser, tripId: string, body: unknown) => {
 };
 
 const put = (url: string, body: string, contentType: string) =>
-  fetch(url, { method: "PUT", body, headers: { "Content-Type": contentType } });
+  app.request(url, { method: "PUT", body, headers: { "Content-Type": contentType } });
 
 const uploadPhoto = async (
   as: TestUser,
@@ -111,8 +111,8 @@ describe("gallery", () => {
     const body = (await response.json()) as MediaResponse;
     expect(body).toMatchObject({ kind: "photo", uploadedBy: { userId: ola.id } });
     expect(new Date(body.takenAt).toISOString()).toBe("2027-05-14T09:00:00.000Z");
-    expect(await (await fetch(body.url)).text()).toBe("photo");
-    expect(await (await fetch(body.thumbnailUrl)).text()).toBe("thumb");
+    expect(await (await app.request(body.url)).text()).toBe("photo");
+    expect(await (await app.request(body.thumbnailUrl)).text()).toBe("thumb");
     expect(target.key).toStartWith(`trips/${id}/media/`);
     expect(target.key).toEndWith(".jpg");
   });

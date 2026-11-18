@@ -51,7 +51,7 @@ const uploadPdf = async (as: TestUser, tripId: string) => {
       body: { contentType: "application/pdf" },
     }),
   );
-  await fetch(uploadUrl, {
+  await app.request(uploadUrl, {
     method: "PUT",
     body: "%PDF",
     headers: { "Content-Type": "application/pdf" },
@@ -125,7 +125,7 @@ describe("documents", () => {
       planPointId: null,
       author: { userId: ola.id },
     });
-    expect(await (await fetch(document.fileUrl!)).text()).toBe("%PDF");
+    expect(await (await app.request(document.fileUrl!)).text()).toBe("%PDF");
   });
 
   test("adds a link attached to a plan point", async () => {
