@@ -132,7 +132,7 @@ describe("trips", () => {
       method: "POST",
     });
     const { uploadUrl, key } = (await uploadResponse.json()) as { uploadUrl: string; key: string };
-    const upload = await fetch(uploadUrl, {
+    const upload = await app.request(uploadUrl, {
       method: "PUT",
       body: "jpeg",
       headers: { "Content-Type": "image/jpeg" },
@@ -144,7 +144,7 @@ describe("trips", () => {
       body: { coverImageKey: key },
     });
     const { coverUrl } = (await updated.json()) as { coverUrl: string };
-    expect(await (await fetch(coverUrl)).text()).toBe("jpeg");
+    expect(await (await app.request(coverUrl)).text()).toBe("jpeg");
 
     await request(`/trips/${id}`, kuba, { method: "DELETE" });
   });
