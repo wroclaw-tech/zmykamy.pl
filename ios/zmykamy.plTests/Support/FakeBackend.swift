@@ -61,6 +61,10 @@ final class FakeBackend: @unchecked Sendable {
         set(.response(status: status, headers: headers, body: try! Self.encoder.encode(value)), for: method, path)
     }
 
+    func on(_ method: String, _ path: String, status: Int = 200, data: Data) {
+        set(.response(status: status, headers: [:], body: data), for: method, path)
+    }
+
     /// Makes `method path` fail as if the device had no connection.
     func offline(_ method: String, _ path: String) {
         set(.offline, for: method, path)
