@@ -16,12 +16,16 @@ settings:
   forwardAuthorizationHeader: true
 
 docs: |-
-  Any trip member. Returns `{ days }`: the Open-Meteo daily forecast for each trip day within the next 16 days, cached for an hour.
+  Any trip member. Returns `{ days, current, typical, forecastAvailableFrom }` from Open-Meteo. Forecasts are cached for 30 minutes, typical weather for a week.
 
-  - `date`: YYYY-MM-DD, local date at the place
-  - `place`, `latitude`, `longitude`: the first plan point of the day with coordinates, otherwise the trip destination; days with neither are left out
-  - `weatherCode`: WMO weather code
-  - `temperatureMax`, `temperatureMin`: °C
-  - `precipitationProbability`: 0-100, or null when unknown
+  - `days`: the daily forecast for each trip day within the next 16 days
+    - `date`: YYYY-MM-DD, local date at the place
+    - `place`, `latitude`, `longitude`: the first plan point of the day with coordinates, otherwise the trip destination; days with neither are left out
+    - `weatherCode`: WMO weather code
+    - `temperatureMax`, `temperatureMin`: °C
+    - `precipitationProbability`: 0-100, or null when unknown
+  - `current`: weather right now at today's place (`date`, `place`, `latitude`, `longitude`, `temperature`, `weatherCode`), or null when today is not a trip day
+  - `typical`: for upcoming trips with no forecast yet, the weather usually seen on the trip dates (first two weeks), averaged over the past five years: `place`, `latitude`, `longitude`, `weatherCode` (most common), `temperatureMax`, `temperatureMin`; otherwise null
+  - `forecastAvailableFrom`: YYYY-MM-DD, the first day the forecast covers the trip start
 
-  Days without a forecast, including when Open-Meteo is unavailable, are left out.
+  Anything Open-Meteo can't provide is left out or null.

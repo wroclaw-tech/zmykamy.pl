@@ -22,26 +22,61 @@ beforeAll(() => {
   }
 });
 
-/** Stubs Open-Meteo with 16 days from 2027-05-13; the max temperature is the rounded latitude. */
+const getDates = (start: string, end: string) => {
+  const dates: string[] = [];
+  for (let date = start; date <= end;) {
+    dates.push(date);
+    date = new Date(Date.parse(date) + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  }
+  return dates;
+};
+
+const respondWithForecast = (url: URL) => {
+  const latitude = Number(url.searchParams.get("latitude"));
+  const time = getDates("2027-05-13", "2027-05-28");
+  return Response.json({
+    current: { time: "2027-05-13T11:00", temperature_2m: 24.3, weather_code: 0 },
+    daily: {
+      time,
+      weather_code: time.map(() => 1),
+      temperature_2m_max: time.map(() => Math.round(latitude)),
+      temperature_2m_min: time.map(() => 12.5),
+      precipitation_probability_max: time.map(() => null),
+    },
+  });
+};
+
+/** Past years get warmer the closer they are: 2026 has 25°, 2022 has 21°. */
+const respondWithArchive = (url: URL) => {
+  const time = getDates(
+    url.searchParams.get("start_date") ?? "",
+    url.searchParams.get("end_date") ?? "",
+  );
+  const yearsAgo = 2027 - Number(time[0]?.slice(0, 4));
+  return Response.json({
+    daily: {
+      time,
+      weather_code: time.map((_, i) => (i % 3 === 2 ? 61 : 0)),
+      temperature_2m_max: time.map(() => 26 - yearsAgo),
+      temperature_2m_min: time.map(() => 14),
+    },
+  });
+};
+
+/**
+ * Stubs Open-Meteo: forecasts for 16 days from 2027-05-13 where the max temperature is the
+ * rounded latitude, and an archive of past years.
+ */
 const mockOpenMeteo = () =>
   spyOn(globalThis, "fetch").mockImplementation((async (input: string | URL | Request) => {
     const url = new URL(String(input));
-    if (url.hostname !== "api.open-meteo.com") {
-      return new Response(null, { status: 404 });
+    if (url.hostname === "api.open-meteo.com") {
+      return respondWithForecast(url);
     }
-    const latitude = Number(url.searchParams.get("latitude"));
-    const time = Array.from({ length: 16 }, (_, i) =>
-      new Date(Date.UTC(2027, 4, 13 + i)).toISOString().slice(0, 10),
-    );
-    return Response.json({
-      daily: {
-        time,
-        weather_code: time.map(() => 1),
-        temperature_2m_max: time.map(() => Math.round(latitude)),
-        temperature_2m_min: time.map(() => 12.5),
-        precipitation_probability_max: time.map(() => null),
-      },
-    });
+    if (url.hostname === "archive-api.open-meteo.com") {
+      return respondWithArchive(url);
+    }
+    return new Response(null, { status: 404 });
   }) as typeof fetch);
 
 let fetchSpy: ReturnType<typeof mockOpenMeteo>;
@@ -67,7 +102,15 @@ const setup = async (body: unknown = lisbon) => {
 
 const getWeather = async (as: TestUser, tripId: string) => {
   const response = await request(`/trips/${tripId}/weather`, as);
-  return { status: response.status, body: (await response.json()) as { days: unknown[] } };
+  return {
+    status: response.status,
+    body: (await response.json()) as {
+      days: unknown[];
+      current: unknown;
+      typical: unknown;
+      forecastAvailableFrom: string;
+    },
+  };
 };
 
 describe("trip weather", () => {
@@ -140,12 +183,69 @@ describe("trip weather", () => {
     expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 
-  test("skips days beyond the forecast and trips without a location", async () => {
-    const later = await setup({ ...lisbon, startDate: "2027-06-10", endDate: "2027-06-12" });
-    expect((await getWeather(later.kuba, later.id)).body.days).toEqual([]);
+  test("reports the current weather at today's place", async () => {
+    const { kuba, id } = await setup();
 
-    const nowhere = await createTrip(later.kuba, { ...lisbon, destination: null });
-    expect((await getWeather(later.kuba, nowhere.id)).body.days).toEqual([]);
+    const { body } = await getWeather(kuba, id);
+
+    expect(body.current).toEqual({
+      date: "2027-05-13",
+      place: "Lizbona",
+      latitude: 38.72,
+      longitude: -9.14,
+      temperature: 24.3,
+      weatherCode: 0,
+    });
+    expect(body.typical).toBeNull();
+  });
+
+  test("describes the usual weather for trips beyond the forecast", async () => {
+    const { kuba, id } = await setup({ ...lisbon, startDate: "2027-06-10", endDate: "2027-06-12" });
+
+    const { body } = await getWeather(kuba, id);
+
+    expect(body.days).toEqual([]);
+    expect(body.current).toBeNull();
+    expect(body.typical).toEqual({
+      place: "Lizbona",
+      latitude: 38.72,
+      longitude: -9.14,
+      weatherCode: 0,
+      temperatureMax: 23,
+      temperatureMin: 14,
+    });
+    expect(body.forecastAvailableFrom).toBe("2027-05-26");
+    expect(fetchSpy).toHaveBeenCalledTimes(5);
+  });
+
+  test("averages the usual weather over at most two weeks of a long trip", async () => {
+    const { kuba, id } = await setup({ ...lisbon, startDate: "2027-07-01", endDate: "2027-08-30" });
+
+    await getWeather(kuba, id);
+
+    const urls = fetchSpy.mock.calls.map(([input]) => new URL(String(input)));
+    expect(urls.map((url) => url.searchParams.get("end_date"))).toContain("2026-07-14");
+  });
+
+  test("skips trips without a location and finished trips", async () => {
+    const { kuba } = await setup();
+    const nowhere = await createTrip(kuba, { ...lisbon, destination: null });
+    const past = await createTrip(kuba, {
+      ...lisbon,
+      startDate: "2027-04-01",
+      endDate: "2027-04-05",
+    });
+
+    expect((await getWeather(kuba, nowhere.id)).body).toMatchObject({
+      days: [],
+      current: null,
+      typical: null,
+    });
+    expect((await getWeather(kuba, past.id)).body).toMatchObject({
+      days: [],
+      current: null,
+      typical: null,
+    });
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
@@ -156,6 +256,6 @@ describe("trip weather", () => {
     const { status, body } = await getWeather(kuba, id);
 
     expect(status).toBe(200);
-    expect(body.days).toEqual([]);
+    expect(body).toMatchObject({ days: [], current: null });
   });
 });
