@@ -41,6 +41,9 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
+  rateLimit: {
+    enabled: false,
+  },
   user: {
     changeEmail: {
       enabled: true,

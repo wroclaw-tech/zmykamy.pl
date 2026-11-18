@@ -12,13 +12,19 @@ export const lisbon = {
 
 export type TestUser = { id: string; headers: Record<string, string> };
 
+export const randomIp = () => crypto.getRandomValues(new Uint8Array(4)).join(".");
+
 export const createUser = async (name: string): Promise<TestUser> => {
   const { token, user: created } = await auth.api.signUpEmail({
     body: { name, email: `${name.toLowerCase()}@example.com`, password: "password123" },
   });
   return {
     id: created.id,
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      "X-Forwarded-For": randomIp(),
+    },
   };
 };
 

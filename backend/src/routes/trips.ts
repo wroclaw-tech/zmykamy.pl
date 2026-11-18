@@ -21,6 +21,7 @@ import { generateInviteCode, toInviteSlug, toInviteUrl } from "../lib/invite";
 import { deleteFilesQuietly, fileExists, getDownloadUrl, getUploadUrl } from "../lib/storage";
 import { getTripProgress } from "../lib/trip-progress";
 import { validate } from "../lib/validation";
+import { rateLimit } from "../middleware/rate-limit";
 import { requireAuth } from "../middleware/require-auth";
 import {
   createTripSchema,
@@ -273,12 +274,17 @@ export const trips = new Hono<AppEnv>()
     ]);
     return c.body(null, 204);
   })
-  .post("/:id/cover/upload-url", validate("param", tripIdParamSchema), async (c) => {
-    const { id } = c.req.valid("param");
-    await getOrganizerTrip(id, c.get("user").id);
-    const key = `${getCoverKeyPrefix(id)}${crypto.randomUUID()}.jpg`;
-    return c.json({ uploadUrl: getUploadUrl(key, COVER_CONTENT_TYPE), key });
-  })
+  .post(
+    "/:id/cover/upload-url",
+    rateLimit("upload", "user"),
+    validate("param", tripIdParamSchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      await getOrganizerTrip(id, c.get("user").id);
+      const key = `${getCoverKeyPrefix(id)}${crypto.randomUUID()}.jpg`;
+      return c.json({ uploadUrl: getUploadUrl(key, COVER_CONTENT_TYPE), key });
+    },
+  )
   .get("/:id/invite", validate("param", tripIdParamSchema), async (c) => {
     const { id } = c.req.valid("param");
     const record = await getMemberTrip(id, c.get("user").id);
