@@ -102,8 +102,8 @@ An expense is returned as `{ id, title, amount, date, icon, paidBy: { userId, na
 Photos and videos are uploaded straight to storage; the app makes the thumbnail (a JPEG) itself. Only trip members can list media, and the returned links are presigned for an hour.
 
 - `POST /trips/:id/media/upload-url` - `{ kind, contentType }` (`photo` with `image/jpeg`, `video` with `video/mp4` or `video/quicktime`); returns `{ key, uploadUrl, thumbnailKey, thumbnailUploadUrl }`. `PUT` the file and its thumbnail within 5 minutes
-- `POST /trips/:id/media` - `{ kind, contentType, key, thumbnailKey, width, height, durationSeconds?, takenAt }` once both files are uploaded; `takenAt` is an ISO date-time with offset. Returns `201`
-- `GET /trips/:id/media` - `{ media }`, newest first, each `{ id, kind, url, thumbnailUrl, contentType, width, height, durationSeconds, takenAt, uploadedBy }`
+- `POST /trips/:id/media` - `{ kind, contentType, key, thumbnailKey, width, height, durationSeconds?, takenAt, source?, externalId? }` once both files are uploaded; `takenAt` is an ISO date-time with offset. Returns `201`. Imported items pass `source` (`google_photos`) with the item's `externalId`; importing the same item into a trip again returns `409 media_already_imported` and deletes the uploaded files
+- `GET /trips/:id/media` - `{ media }`, newest first, each `{ id, kind, url, thumbnailUrl, contentType, width, height, durationSeconds, takenAt, source, externalId, uploadedBy }`
 - `DELETE /trips/:id/media/:mediaId` - the uploader or an organizer; deletes the files too, returns `204`
 
 Deleting a trip also deletes its media files.

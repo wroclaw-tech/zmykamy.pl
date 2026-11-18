@@ -6,12 +6,14 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 import { user } from "./auth";
 import { trip } from "./trips";
 
 export const MEDIA_KINDS = ["photo", "video"] as const;
+export const MEDIA_SOURCES = ["google_photos"] as const;
 
 export const media = pgTable(
   "media",
@@ -29,9 +31,18 @@ export const media = pgTable(
     durationSeconds: doublePrecision("duration_seconds"),
     takenAt: timestamp("taken_at", { withTimezone: true }).notNull(),
     uploadedBy: text("uploaded_by").references(() => user.id, { onDelete: "set null" }),
+    source: text("source", { enum: MEDIA_SOURCES }),
+    externalId: text("external_id"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (table) => [index("media_tripId_takenAt_idx").on(table.tripId, table.takenAt)],
+  (table) => [
+    index("media_tripId_takenAt_idx").on(table.tripId, table.takenAt),
+    uniqueIndex("media_tripId_source_externalId_idx").on(
+      table.tripId,
+      table.source,
+      table.externalId,
+    ),
+  ],
 );
 
 export const mediaRelations = relations(media, ({ one }) => ({

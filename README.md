@@ -35,3 +35,20 @@ Debug builds talk to the local backend at `http://localhost:3000`, so start it f
 3. Under **Environment Variables** enable the `ZMYKAMY_API_URL` checkbox, then run the app
 
 Uncheck it to switch back to the local backend. `localhost` only reaches your Mac from the Simulator, so enable the variable when running on a physical device. Release builds always use the production API.
+
+#### Google Photos import
+
+The gallery can import photos and videos from Google Photos through the [Photos Picker API](https://developers.google.com/photos/picker). The entry only shows up when a Google OAuth client ID is configured:
+
+1. In [Google Cloud Console](https://console.cloud.google.com/) pick or create a project and enable the **Google Photos Picker API**.
+2. Set up the **OAuth consent screen** and add the `https://www.googleapis.com/auth/photospicker.mediaitems.readonly` scope. While the app is in testing mode, add your Google accounts as test users.
+3. Create an **OAuth client ID** of type **iOS** with bundle ID `pl.zmykamy.app`. No client secret is needed.
+4. Put the client ID in `ios/Config/Local.xcconfig` (gitignored):
+
+   ```
+   GOOGLE_CLIENT_ID = 1234567890-abcdef.apps.googleusercontent.com
+   ```
+
+   For CI or release builds, pass it as a build setting instead (`xcodebuild ... GOOGLE_CLIENT_ID=...`).
+
+The app signs in with `ASWebAuthenticationSession` and PKCE, using the reversed client ID (`com.googleusercontent.apps.1234567890-abcdef:/oauth2redirect`) as the redirect. The import is a one-time copy, so running it again picks up new photos and skips ones already in the trip.

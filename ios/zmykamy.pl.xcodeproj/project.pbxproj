@@ -27,6 +27,8 @@
 		11B0767430782DF100E0C1BC /* zmykamy.plTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = zmykamy.plTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		11B0767E30782DF100E0C1BC /* zmykamy.plUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = zmykamy.plUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		11D0AD9A3079179A0006D8AC /* zmykamy.pl.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = zmykamy.pl.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		11E0C0013090000000000001 /* App.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = App.xcconfig; sourceTree = "<group>"; };
+		11E0C0023090000000000001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -72,8 +74,18 @@
 				11D0AD9C3079179A0006D8AC /* zmykamy.pl */,
 				11B0767730782DF100E0C1BC /* zmykamy.plTests */,
 				11B0768130782DF100E0C1BC /* zmykamy.plUITests */,
+				11E0C0033090000000000001 /* Config */,
 				11D0AD9B3079179A0006D8AC /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		11E0C0033090000000000001 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				11E0C0013090000000000001 /* App.xcconfig */,
+				11E0C0023090000000000001 /* Info.plist */,
+			);
+			path = Config;
 			sourceTree = "<group>";
 		};
 		11D0AD9B3079179A0006D8AC /* Products */ = {
@@ -446,6 +458,7 @@
 		};
 		11D0ADA63079179C0006D8AC /* Debug configuration for PBXNativeTarget "zmykamy.pl" */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 11E0C0013090000000000001 /* App.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -455,6 +468,7 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Zmykamy.pl;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Aparat pozwala dodawać zdjęcia i filmy do wspólnej galerii wyjazdu oraz skanować kody QR zaproszeń.";
@@ -485,6 +499,7 @@
 		};
 		11D0ADA73079179C0006D8AC /* Release configuration for PBXNativeTarget "zmykamy.pl" */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 11E0C0013090000000000001 /* App.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -494,6 +509,7 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Zmykamy.pl;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Aparat pozwala dodawać zdjęcia i filmy do wspólnej galerii wyjazdu oraz skanować kody QR zaproszeń.";

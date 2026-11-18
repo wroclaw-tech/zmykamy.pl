@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { MEDIA_KINDS } from "../db/schema";
+import { MEDIA_KINDS, MEDIA_SOURCES } from "../db/schema";
 
 export const MEDIA_CONTENT_TYPES = {
   "image/jpeg": "jpg",
@@ -37,5 +37,11 @@ export const createMediaSchema = z
       .nullable()
       .default(null),
     takenAt: z.iso.datetime({ offset: true }),
+    source: z.enum(MEDIA_SOURCES).nullable().default(null),
+    externalId: z.string().min(1).max(512).nullable().default(null),
   })
-  .refine(isMatchingKind, kindIssue);
+  .refine(isMatchingKind, kindIssue)
+  .refine((body) => (body.source === null) === (body.externalId === null), {
+    message: "source and externalId go together",
+    path: ["externalId"],
+  });

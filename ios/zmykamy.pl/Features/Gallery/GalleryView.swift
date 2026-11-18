@@ -10,12 +10,14 @@ struct GalleryView: View {
     let user: AuthUser
 
     @Environment(GalleryStore.self) private var store
+    @Environment(GooglePhotosImporter.self) private var googlePhotos
     @Environment(PlanStore.self) private var plans
     @Environment(\.theme) private var theme
     @State private var filter = GalleryFilter.all
     @State private var pickerItems: [PhotosPickerItem] = []
     @State private var isShowingPicker = false
     @State private var isShowingCamera = false
+    @State private var isShowingGooglePhotos = false
     @State private var isImporting = false
     @State private var viewer: ViewerSelection?
     @State private var loadError: String?
@@ -44,6 +46,9 @@ struct GalleryView: View {
                     matching: .any(of: [.images, .videos]),
                     preferredItemEncoding: .compatible
                 )
+                .navigationDestination(isPresented: $isShowingGooglePhotos) {
+                    GooglePhotosImportView(trip: trip)
+                }
                 .fullScreenCover(isPresented: $isShowingCamera) {
                     CameraPicker { captured in importCaptured(captured) }
                         .ignoresSafeArea()
@@ -70,11 +75,19 @@ struct GalleryView: View {
         (store.media(for: trip) ?? []).filter(filter.includes)
     }
 
+    private var googlePhotosProgress: String? {
+        guard case .downloading(let done, let total) = googlePhotos.phase(for: trip) else { return nil }
+        return "Google Photos · \(min(done + 1, total)) z \(total)"
+    }
+
     private var addMenu: some View {
         Menu {
             Button("Wybierz z biblioteki", image: .photoLibrary) { isShowingPicker = true }
             if UIImagePickerController.isSourceTypeAvailable(.camera) {
                 Button("Zrób zdjęcie lub film", image: .photoCamera) { isShowingCamera = true }
+            }
+            if googlePhotos.oauth != nil {
+                Button("Importuj z Google Photos", image: .download) { isShowingGooglePhotos = true }
             }
         } label: {
             Image(.addPhotoAlternate)
@@ -103,7 +116,7 @@ struct GalleryView: View {
                         .foregroundStyle(.neutralGray)
                         .padding(.horizontal, Spacing.gutter)
 
-                    if isImporting || !uploads.isEmpty {
+                    if isImporting || !uploads.isEmpty || googlePhotosProgress != nil {
                         uploadsSection(uploads)
                     }
 
@@ -157,6 +170,12 @@ struct GalleryView: View {
                     .foregroundStyle(.neutralInk)
                 if isImporting {
                     ProgressView()
+                }
+                if let googlePhotosProgress {
+                    Spacer(minLength: Spacing.s8)
+                    Button(googlePhotosProgress) { isShowingGooglePhotos = true }
+                        .typography(.subheadRegular)
+                        .foregroundStyle(.neutralGray)
                 }
             }
             .padding(.horizontal, Spacing.gutter)
