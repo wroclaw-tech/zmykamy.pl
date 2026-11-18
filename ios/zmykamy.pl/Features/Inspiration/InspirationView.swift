@@ -260,8 +260,10 @@ struct InspirationView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     NavigationStack {
         InspirationView(user: .preview) { _ in }
     }
 }
+#endif
