@@ -218,6 +218,19 @@ describe("trip weather", () => {
     expect(fetchSpy).toHaveBeenCalledTimes(5);
   });
 
+  test("describes the usual weather for the days past the forecast", async () => {
+    const { kuba, id } = await setup({ ...lisbon, startDate: "2027-05-26", endDate: "2027-06-01" });
+
+    const { body } = await getWeather(kuba, id);
+
+    expect(body.days).toHaveLength(3);
+    const urls = fetchSpy.mock.calls.map(([input]) => new URL(String(input)));
+    expect(urls.map((url) => url.searchParams.get("start_date")).filter(Boolean)).toContain(
+      "2026-05-29",
+    );
+    expect(body.typical).toMatchObject({ place: "Lizbona", weatherCode: 0 });
+  });
+
   test("averages the usual weather over at most two weeks of a long trip", async () => {
     const { kuba, id } = await setup({ ...lisbon, startDate: "2027-07-01", endDate: "2027-08-30" });
 

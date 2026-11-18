@@ -82,29 +82,31 @@ export const weather = new Hono<AppEnv>()
       return point && hasCoordinates(point) ? toLocation(point) : null;
     };
 
-    const getTypical = async () => {
-      const location = getTripLocation();
-      if (dates.length > 0 || !location || !hasCoordinates(location)) {
-        return null;
-      }
-      const typical = await getTypicalWeather(location, record.startDate, record.endDate);
-      return typical ? { ...location, ...typical } : null;
-    };
-
     const locations = dates.map(getDayLocation).filter((location) => location !== null);
-    const [forecasts, typical] = await Promise.all([
-      Promise.all(
-        locations.map(async (location) => ({
-          location,
-          forecast: await getForecast(location),
-        })),
-      ),
-      getTypical(),
-    ]);
+    const forecasts = await Promise.all(
+      locations.map(async (location) => ({
+        location,
+        forecast: await getForecast(location),
+      })),
+    );
     const days = forecasts.flatMap(({ location, forecast }) => {
       const daily = forecast.daily.get(location.date);
       return daily ? [{ ...location, ...daily }] : [];
     });
+
+    /** Usual weather for the trip days the forecast does not reach. */
+    const getTypical = async () => {
+      const lastForecastDate = days.at(-1)?.date;
+      const firstDate = lastForecastDate ? shiftDate(lastForecastDate, 1) : record.startDate;
+      const location = getTripLocation();
+      if (firstDate > record.endDate || !location || !hasCoordinates(location)) {
+        return null;
+      }
+      const typical = await getTypicalWeather(location, firstDate, record.endDate);
+      return typical ? { ...location, ...typical } : null;
+    };
+
+    const typical = await getTypical();
     const today = forecasts.find(
       ({ location, forecast }) => forecast.current?.date === location.date,
     );
