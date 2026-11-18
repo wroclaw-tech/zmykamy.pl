@@ -5,5 +5,6 @@ export * from "./media";
 export * from "./packing";
 export * from "./plan";
 export * from "./polls";
+export * from "./rate-limit";
 export * from "./tasks";
 export * from "./trips";

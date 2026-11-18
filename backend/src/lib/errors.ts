@@ -12,7 +12,19 @@ export class ApiError extends HTTPException {
   }
 }
 
+export class RateLimitError extends ApiError {
+  readonly retryAfter: number;
+
+  constructor(retryAfter: number) {
+    super(429, "rate_limited", "Too many requests, try again later");
+    this.retryAfter = retryAfter;
+  }
+}
+
 export const handleError: ErrorHandler = (error, c) => {
+  if (error instanceof RateLimitError) {
+    c.header("Retry-After", String(error.retryAfter));
+  }
   if (error instanceof ApiError) {
     return c.json({ error: { code: error.code, message: error.message } }, error.status);
   }
