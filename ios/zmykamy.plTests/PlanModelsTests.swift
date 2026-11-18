@@ -26,7 +26,7 @@ struct PlanModelsTests {
     @Test func decodesPlanFromTheApi() throws {
         let json = """
         {"points":[{"id":"p1","date":"2027-05-14","time":"09:12","title":"Pociąg do Sintry","description":null,\
-        "place":"Rossio","icon":"train","author":{"userId":"u1","name":"Ola"}}],\
+        "place":"Rossio","latitude":38.7139,"longitude":-9.1394,"icon":"train","author":{"userId":"u1","name":"Ola"}}],\
         "info":[{"id":"i1","title":"Nocleg","text":"Alfama","icon":"bed","author":null}]}
         """
         let plan = try APIClient.decoder.decode(TripPlan.self, from: Data(json.utf8))
@@ -35,7 +35,18 @@ struct PlanModelsTests {
         #expect(plan.points.first?.time == PlanTime(hour: 9, minute: 12))
         #expect(plan.points.first?.icon == .train)
         #expect(plan.points.first?.subtitle == "Rossio")
+        #expect(plan.points.first?.coordinate == PlanCoordinate(latitude: 38.7139, longitude: -9.1394))
         #expect(plan.info.first?.author == nil)
+    }
+
+    @Test func readsPlansCachedBeforePointsHadCoordinates() throws {
+        let json = """
+        {"points":[{"id":"p1","date":"2027-05-14","time":"09:12","title":"Spacer","description":null,\
+        "place":null,"icon":"park","author":null}],"info":[]}
+        """
+        let plan = try APIClient.decoder.decode(TripPlan.self, from: Data(json.utf8))
+
+        #expect(plan.points.first?.coordinate == nil)
     }
 
     @Test func fallsBackToDefaultIconForUnknownKeys() throws {
@@ -51,12 +62,15 @@ struct PlanModelsTests {
             title: "Spacer",
             description: nil,
             place: nil,
+            coordinate: nil,
             icon: .park
         )
         let json = try #require(String(data: JSONEncoder().encode(request), encoding: .utf8))
 
         #expect(json.contains("\"description\":null"))
         #expect(json.contains("\"place\":null"))
+        #expect(json.contains("\"latitude\":null"))
+        #expect(json.contains("\"longitude\":null"))
         #expect(json.contains("\"time\":\"09:05\""))
         #expect(json.contains("\"icon\":\"park\""))
     }
@@ -100,8 +114,8 @@ struct PlanModelsTests {
         let second = LocalDate(year: 2027, month: 5, day: 13)
         let plan = TripPlan(
             points: [
-                PlanPoint(id: "a", date: first, time: PlanTime(hour: 9, minute: 0), title: "A", description: nil, place: nil, icon: .park, author: nil),
-                PlanPoint(id: "b", date: second, time: PlanTime(hour: 10, minute: 0), title: "B", description: nil, place: nil, icon: .park, author: nil),
+                .fixture("a", on: first, at: PlanTime(hour: 9, minute: 0)),
+                .fixture("b", on: second, at: PlanTime(hour: 10, minute: 0)),
             ],
             info: []
         )

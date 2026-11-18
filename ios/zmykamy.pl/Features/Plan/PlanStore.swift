@@ -3,6 +3,7 @@ import Observation
 @Observable
 final class PlanStore {
     private(set) var plans: [Trip.ID: TripPlan] = [:]
+    private(set) var weather: [Trip.ID: TripWeather] = [:]
 
     private let api: AuthorizedAPI
 
@@ -29,6 +30,27 @@ final class PlanStore {
 
     private func cacheName(_ trip: Trip) -> String {
         "trip-\(trip.id)-plan"
+    }
+
+    func weather(for trip: Trip) -> TripWeather? {
+        weather[trip.id]
+    }
+
+    /// Forecast for the trip days; keeps the last one seen when it can't be refreshed,
+    /// since weather is only a hint.
+    func loadWeather(_ trip: Trip) async {
+        let cacheName = "trip-\(trip.id)-weather"
+        do throws(APIError) {
+            let forecast: TripWeather = try await api.call { (client, token) throws(APIError) in
+                try await client.send("GET", "trips/\(trip.id)/weather", token: token)
+            }
+            weather[trip.id] = forecast
+            OfflineCache.save(forecast, as: cacheName)
+        } catch {
+            if weather[trip.id] == nil {
+                weather[trip.id] = OfflineCache.load(TripWeather.self, name: cacheName)
+            }
+        }
     }
 
     func addPoint(_ request: PlanPointRequest, to trip: Trip) async throws(APIError) {

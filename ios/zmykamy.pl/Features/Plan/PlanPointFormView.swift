@@ -1,3 +1,4 @@
+import CoreLocation
 import SwiftUI
 
 /// Adds a plan point, or edits one when `point` is given.
@@ -13,6 +14,10 @@ struct PlanPointFormView: View {
     @State private var date: Date
     @State private var time: Date
     @State private var place: String
+    /// Set when the place was picked from the map; typing a different name drops it.
+    @State private var coordinate: PlanCoordinate?
+    @State private var mapPlaceName: String?
+    @State private var isSearchingPlace = false
     @State private var details: String
     @State private var icon: PlanIcon
     @State private var isSaving = false
@@ -29,6 +34,8 @@ struct PlanPointFormView: View {
         _date = State(initialValue: (point?.date ?? date).date(in: calendar))
         _time = State(initialValue: (point?.time ?? PlanTime(hour: 9, minute: 0)).date(calendar: calendar))
         _place = State(initialValue: point?.place ?? "")
+        _coordinate = State(initialValue: point?.coordinate)
+        _mapPlaceName = State(initialValue: point?.coordinate == nil ? nil : point?.place ?? "")
         _details = State(initialValue: point?.description ?? "")
         _icon = State(initialValue: point?.icon ?? .locationOn)
     }
@@ -77,6 +84,24 @@ struct PlanPointFormView: View {
                                 .typography(.bodyRegular)
                                 .foregroundStyle(.neutralInk)
                                 .textInputAutocapitalization(.sentences)
+                            Button("Szukaj na mapie", image: .locationOn) { isSearchingPlace = true }
+                                .labelStyle(.iconOnly)
+                                .foregroundStyle(coordinate == nil ? Color.neutralGray : theme.accent)
+                        }
+                        if coordinate != nil {
+                            HStack(spacing: Spacing.s8) {
+                                Text("Miejsce z mapy: pokażemy pogodę i nawigację.")
+                                    .typography(.footnote)
+                                    .foregroundStyle(.neutralGray)
+                                Spacer(minLength: 0)
+                                Button("Usuń", action: clearCoordinate)
+                                    .typography(.footnote)
+                            }
+                        }
+                    }
+                    .onChange(of: place) { _, newPlace in
+                        if newPlace != mapPlaceName {
+                            clearCoordinate()
                         }
                     }
                     FormCard(title: "Opis") {
@@ -120,6 +145,9 @@ struct PlanPointFormView: View {
                         .disabled(!canSave)
                 }
             }
+            .sheet(isPresented: $isSearchingPlace) {
+                DestinationSearchView(title: "Gdzie?", prompt: "Dworzec, muzeum, adres…", near: searchCenter, onSelect: selectPlace)
+            }
             .confirmationDialog("Usunąć punkt?", isPresented: $isConfirmingDelete, titleVisibility: .visible) {
                 Button("Usuń punkt", role: .destructive, action: delete)
             } message: {
@@ -137,6 +165,29 @@ struct PlanPointFormView: View {
         .interactiveDismissDisabled(isSaving)
     }
 
+    private var searchCenter: CLLocationCoordinate2D? {
+        if let coordinate {
+            return CLLocationCoordinate2D(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        }
+        guard let latitude = trip.destination?.latitude, let longitude = trip.destination?.longitude else { return nil }
+        return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+    }
+
+    private func selectPlace(_ selected: TripDestination) {
+        mapPlaceName = selected.name
+        place = selected.name
+        if let latitude = selected.latitude, let longitude = selected.longitude {
+            coordinate = PlanCoordinate(latitude: latitude, longitude: longitude)
+        } else {
+            coordinate = nil
+        }
+    }
+
+    private func clearCoordinate() {
+        coordinate = nil
+        mapPlaceName = nil
+    }
+
     private func optionalText(_ text: String) -> String? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
@@ -149,6 +200,7 @@ struct PlanPointFormView: View {
             title: trimmedTitle,
             description: optionalText(details),
             place: optionalText(place),
+            coordinate: coordinate,
             icon: icon
         )
         run { () async throws(APIError) in

@@ -30,8 +30,18 @@ nonisolated struct PlanTime: Codable, Hashable, Comparable, Sendable {
         try container.encode(text)
     }
 
+    /// Minutes since midnight.
+    init(minutes: Int) {
+        let clamped = min(max(minutes, 0), 24 * 60 - 1)
+        self.init(hour: clamped / 60, minute: clamped % 60)
+    }
+
     var text: String {
         String(format: "%02d:%02d", hour, minute)
+    }
+
+    var minutes: Int {
+        hour * 60 + minute
     }
 
     /// Today at this time, for editing in a time picker.
@@ -56,13 +66,25 @@ nonisolated struct PlanPoint: Codable, Equatable, Identifiable, Sendable {
     let title: String
     let description: String?
     let place: String?
+    let latitude: Double?
+    let longitude: Double?
     let icon: PlanIcon
     let author: PlanAuthor?
+
+    var coordinate: PlanCoordinate? {
+        guard let latitude, let longitude else { return nil }
+        return PlanCoordinate(latitude: latitude, longitude: longitude)
+    }
 
     var subtitle: String? {
         let parts = [place, description].compactMap { $0 }.filter { !$0.isEmpty }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
+}
+
+nonisolated struct PlanCoordinate: Equatable, Hashable, Sendable {
+    let latitude: Double
+    let longitude: Double
 }
 
 nonisolated struct TripInfoCard: Codable, Equatable, Identifiable, Sendable {
@@ -90,10 +112,11 @@ nonisolated struct PlanPointRequest: Encodable, Sendable {
     let title: String
     let description: String?
     let place: String?
+    let coordinate: PlanCoordinate?
     let icon: PlanIcon
 
     private enum CodingKeys: String, CodingKey {
-        case date, time, title, description, place, icon
+        case date, time, title, description, place, latitude, longitude, icon
     }
 
     func encode(to encoder: Encoder) throws {
@@ -103,6 +126,8 @@ nonisolated struct PlanPointRequest: Encodable, Sendable {
         try container.encode(title, forKey: .title)
         try container.encode(description, forKey: .description)
         try container.encode(place, forKey: .place)
+        try container.encode(coordinate?.latitude, forKey: .latitude)
+        try container.encode(coordinate?.longitude, forKey: .longitude)
         try container.encode(icon, forKey: .icon)
     }
 }
