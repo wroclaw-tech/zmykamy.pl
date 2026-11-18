@@ -1,12 +1,11 @@
 import { Hono } from "hono";
 import { ApiError } from "../lib/errors";
+import { escapeHtml } from "../lib/html";
 import { validate } from "../lib/validation";
 import { inviteSlugParamSchema } from "../schemas/trip";
 import { findInvitedTrip } from "./invites";
 
 const BUNDLE_ID = "pl.zmykamy.app";
-
-const escapeHtml = (text: string) => text.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
 
 const renderInvitePage = (tripName: string | null) => `<!doctype html>
 <html lang="pl">
