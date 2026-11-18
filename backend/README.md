@@ -24,7 +24,7 @@ Mobile clients authenticate with the `Authorization: Bearer <token>` header, usi
 
 Errors are returned as `{ "error": { "code", "message" } }`; Better Auth endpoints under `/auth/*` return `{ "code", "message" }`.
 
-Some endpoints are rate limited with fixed windows shared by all instances (stored in Postgres). Going over a limit returns `429 rate_limited` in the API error format, also under `/auth/*`, with a `Retry-After` header in seconds. Anonymous endpoints are limited per client IP (the first `X-Forwarded-For` hop), the rest per user. Limits live in `RATE_LIMITS` in `src/lib/rate-limit.ts`:
+Some endpoints are rate limited with fixed windows shared by all instances (stored in Postgres). Going over a limit returns `429 rate_limited` in the API error format, also under `/auth/*`, with a `Retry-After` header in seconds. Anonymous endpoints are limited per client IP (the last `X-Forwarded-For` hop, added by the proxy in front), the rest per user. Limits live in `RATE_LIMITS` in `src/lib/rate-limit.ts`:
 
 - `POST /auth/sign-in/*` — 20 per 15 minutes per IP
 - `POST /auth/sign-up/*` — 10 per hour per IP

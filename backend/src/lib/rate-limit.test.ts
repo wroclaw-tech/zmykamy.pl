@@ -95,7 +95,7 @@ describe("auth limits", () => {
     ["/auth/sign-up/email", RATE_LIMITS.signUp],
   ])("limits %s per client ip", async (path, { limit, windowMs }) => {
     const ip = randomIp();
-    const responses = await repeat(limit, () => authRequest(path, `${ip}, 10.0.0.1`));
+    const responses = await repeat(limit, () => authRequest(path, `${randomIp()}, ${ip}`));
     expect(responses.every((response) => response.status !== 429)).toBe(true);
 
     await expectRateLimited(await authRequest(path, ip), windowMs);

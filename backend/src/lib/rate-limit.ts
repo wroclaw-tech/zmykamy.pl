@@ -64,4 +64,4 @@ const getConnectionIp = (c: Context) => {
 };
 
 export const getClientIp = (c: Context) =>
-  c.req.header("x-forwarded-for")?.split(",")[0]?.trim() || getConnectionIp(c) || "unknown";
+  c.req.header("x-forwarded-for")?.split(",").at(-1)?.trim() || getConnectionIp(c) || "unknown";
