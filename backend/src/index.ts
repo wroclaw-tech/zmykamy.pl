@@ -16,6 +16,7 @@ import { polls } from "./routes/polls";
 import { tasks } from "./routes/tasks";
 import { trips } from "./routes/trips";
 import { universalLinks } from "./routes/universal-links";
+import { weather } from "./routes/weather";
 
 const app = new Hono<AppEnv>();
 
@@ -30,6 +31,7 @@ app.use("/auth/sign-up/*", rateLimit("signUp"));
 app.on(["GET", "POST"], "/auth/*", (c) => auth.handler(c.req.raw));
 app.route("/trips", trips);
 app.route("/trips", plan);
+app.route("/trips", weather);
 app.route("/trips", expenses);
 app.route("/trips", gallery);
 app.route("/trips", documents);

@@ -1,0 +1,27 @@
+info:
+  name: Get weather
+  type: http
+  seq: 8
+
+http:
+  method: GET
+  url: "{{baseUrl}}/trips/{{tripId}}/weather"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Any trip member. Returns `{ days }`: the Open-Meteo daily forecast for each trip day within the next 16 days, cached for an hour.
+
+  - `date`: YYYY-MM-DD, local date at the place
+  - `place`, `latitude`, `longitude`: the first plan point of the day with coordinates, otherwise the trip destination; days with neither are left out
+  - `weatherCode`: WMO weather code
+  - `temperatureMax`, `temperatureMin`: °C
+  - `precipitationProbability`: 0-100, or null when unknown
+
+  Days without a forecast, including when Open-Meteo is unavailable, are left out.
