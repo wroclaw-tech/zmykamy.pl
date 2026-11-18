@@ -71,7 +71,66 @@ struct PlanStoreTests {
         }
     }
 
+    @Test func showsTheForecastForTripDays() async throws {
+        backend.on("GET", "trips/t1/weather", json: Self.weatherJSON)
+        let plan = store()
+
+        await plan.loadWeather(trip)
+
+        let forecast = try #require(plan.weather(for: trip)?.forecast(on: monday))
+        #expect(forecast.place == "Sintra")
+        #expect(forecast.condition == .clear)
+    }
+
+    @Test func keepsTheLastForecastWhenOffline() async {
+        backend.on("GET", "trips/t1/weather", json: Self.weatherJSON)
+        await store().loadWeather(trip)
+
+        backend.goOffline()
+        let relaunched = store()
+        await relaunched.loadWeather(trip)
+
+        #expect(relaunched.weather(for: trip)?.days.map(\.date) == [monday])
+    }
+
+    @Test func keepsTheShownForecastWhenRefreshingFails() async {
+        backend.on("GET", "trips/t1/weather", json: Self.weatherJSON)
+        let plan = store()
+        await plan.loadWeather(trip)
+
+        backend.on("GET", "trips/t1/weather", status: 502, json: #"{"error":{"code":"internal_error","message":"x"}}"#)
+        await plan.loadWeather(trip)
+
+        #expect(plan.weather(for: trip)?.days.count == 1)
+    }
+
+    @Test func sendsThePickedPlaceCoordinates() async throws {
+        let point = PlanPoint.fixture("pena", on: monday, at: PlanTime(hour: 10, minute: 30), coordinate: PlanCoordinate(latitude: 38.7876, longitude: -9.3906))
+        backend.on("POST", "trips/t1/plan/points", returning: point)
+        let plan = store()
+
+        try await plan.addPoint(Self.request(for: point), to: trip)
+
+        let sent = try #require(backend.requests("POST", "trips/t1/plan/points").first?.json)
+        #expect(sent["latitude"] as? Double == 38.7876)
+        #expect(sent["longitude"] as? Double == -9.3906)
+        #expect(plan.plan(for: trip)?.points.first?.coordinate == point.coordinate)
+    }
+
+    private static let weatherJSON = """
+    {"days":[{"date":"2027-05-12","place":"Sintra","latitude":38.8,"longitude":-9.39,"weatherCode":0,\
+    "temperatureMax":21.4,"temperatureMin":13.1,"precipitationProbability":5}]}
+    """
+
     private static func request(for point: PlanPoint) -> PlanPointRequest {
-        PlanPointRequest(date: point.date, time: point.time, title: point.title, description: nil, place: nil, icon: point.icon)
+        PlanPointRequest(
+            date: point.date,
+            time: point.time,
+            title: point.title,
+            description: nil,
+            place: nil,
+            coordinate: point.coordinate,
+            icon: point.icon
+        )
     }
 }

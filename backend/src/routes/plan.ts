@@ -29,6 +29,8 @@ const toPointResponse = (point: typeof planPoint.$inferSelect & { author: Author
   title: point.title,
   description: point.description,
   place: point.place,
+  latitude: point.latitude,
+  longitude: point.longitude,
   icon: point.icon,
   author: toAuthorResponse(point.author),
 });

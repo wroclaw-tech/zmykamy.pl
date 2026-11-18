@@ -34,8 +34,25 @@ extension PackingItem {
 }
 
 extension PlanPoint {
-    static func fixture(_ id: String, on date: LocalDate, at time: PlanTime) -> PlanPoint {
-        PlanPoint(id: id, date: date, time: time, title: id, description: nil, place: nil, icon: .park, author: nil)
+    static func fixture(
+        _ id: String,
+        on date: LocalDate,
+        at time: PlanTime,
+        icon: PlanIcon = .park,
+        coordinate: PlanCoordinate? = nil
+    ) -> PlanPoint {
+        PlanPoint(
+            id: id,
+            date: date,
+            time: time,
+            title: id,
+            description: nil,
+            place: nil,
+            latitude: coordinate?.latitude,
+            longitude: coordinate?.longitude,
+            icon: icon,
+            author: nil
+        )
     }
 }
 

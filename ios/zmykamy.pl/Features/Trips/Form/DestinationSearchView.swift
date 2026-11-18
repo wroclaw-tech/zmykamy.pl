@@ -9,9 +9,12 @@ private final class DestinationCompleter: NSObject {
     private(set) var results: [MKLocalSearchCompletion] = []
     private let completer = MKLocalSearchCompleter()
 
-    override init() {
+    init(near center: CLLocationCoordinate2D?) {
         super.init()
         completer.resultTypes = [.address, .pointOfInterest]
+        if let center {
+            completer.region = MKCoordinateRegion(center: center, latitudinalMeters: 50_000, longitudinalMeters: 50_000)
+        }
         completer.delegate = self
     }
 }
@@ -26,11 +29,27 @@ extension DestinationCompleter: @preconcurrency MKLocalSearchCompleterDelegate {
     }
 }
 
+/// Searches Apple Maps for a place; also picks plan point locations.
 struct DestinationSearchView: View {
+    let title: String
+    let prompt: String
     let onSelect: (TripDestination) -> Void
     @Environment(\.dismiss) private var dismiss
     @Environment(\.theme) private var theme
-    @State private var completer = DestinationCompleter()
+    @State private var completer: DestinationCompleter
+
+    /// `center` biases results towards places around it, such as the trip destination.
+    init(
+        title: String = "Dokąd?",
+        prompt: String = "Lizbona, Zakopane…",
+        near center: CLLocationCoordinate2D? = nil,
+        onSelect: @escaping (TripDestination) -> Void
+    ) {
+        self.title = title
+        self.prompt = prompt
+        self.onSelect = onSelect
+        _completer = State(initialValue: DestinationCompleter(near: center))
+    }
 
     var body: some View {
         NavigationStack {
@@ -55,8 +74,8 @@ struct DestinationSearchView: View {
                     ContentUnavailableView("Wpisz miasto albo miejsce", image: "language")
                 }
             }
-            .searchable(text: $completer.query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Lizbona, Zakopane…")
-            .navigationTitle("Dokąd?")
+            .searchable(text: $completer.query, placement: .navigationBarDrawer(displayMode: .always), prompt: Text(prompt))
+            .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

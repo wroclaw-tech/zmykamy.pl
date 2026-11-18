@@ -1,6 +1,6 @@
 {
-  "id": "f99a2b2e-4411-429a-9be6-e1267d0e9998",
-  "prevId": "179a69c6-0077-452c-bb42-97708d68a341",
+  "id": "e3408751-4e53-4d06-bc82-452aef958310",
+  "prevId": "6a36867b-5874-4b2d-aab4-b3cd162c44a1",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1101,6 +1101,18 @@
           "primaryKey": false,
           "notNull": false
         },
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "external_id": {
+          "name": "external_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -1127,6 +1139,33 @@
             }
           ],
           "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "media_tripId_source_externalId_idx": {
+          "name": "media_tripId_source_externalId_idx",
+          "columns": [
+            {
+              "expression": "trip_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "source",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "external_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -1334,6 +1373,18 @@
           "primaryKey": false,
           "notNull": false
         },
+        "latitude": {
+          "name": "latitude",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "longitude": {
+          "name": "longitude",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
         "icon": {
           "name": "icon",
           "type": "text",
@@ -1408,7 +1459,12 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "plan_point_coordinates_check": {
+          "name": "plan_point_coordinates_check",
+          "value": "(\"plan_point\".\"latitude\" IS NULL) = (\"plan_point\".\"longitude\" IS NULL)"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.trip_info": {
@@ -2018,6 +2074,120 @@
           "value": "\"trip\".\"end_date\" >= \"trip\".\"start_date\""
         }
       },
+      "isRLSEnabled": false
+    },
+    "public.trip_email_invite": {
+      "name": "trip_email_invite",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "trip_id": {
+          "name": "trip_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "invited_by": {
+          "name": "invited_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sent_at": {
+          "name": "sent_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "joined_at": {
+          "name": "joined_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "trip_email_invite_tripId_email_idx": {
+          "name": "trip_email_invite_tripId_email_idx",
+          "columns": [
+            {
+              "expression": "trip_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "email",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "trip_email_invite_email_idx": {
+          "name": "trip_email_invite_email_idx",
+          "columns": [
+            {
+              "expression": "email",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "trip_email_invite_trip_id_trip_id_fk": {
+          "name": "trip_email_invite_trip_id_trip_id_fk",
+          "tableFrom": "trip_email_invite",
+          "tableTo": "trip",
+          "columnsFrom": ["trip_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "trip_email_invite_invited_by_user_id_fk": {
+          "name": "trip_email_invite_invited_by_user_id_fk",
+          "tableFrom": "trip_email_invite",
+          "tableTo": "user",
+          "columnsFrom": ["invited_by"],
+          "columnsTo": ["id"],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.trip_invite": {

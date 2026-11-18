@@ -74,7 +74,16 @@ struct PlanView: View {
             await load()
             await documents.loadIfNeeded(trip)
         }
+        .task(id: weatherInputs) { await plans.loadWeather(trip) }
         .quickLookPreview($opener.previewURL)
+    }
+
+    /// What the forecast depends on, so it reloads when a located point changes.
+    private var weatherInputs: [String] {
+        let located = plans.plan(for: trip)?.points.compactMap { point in
+            point.coordinate.map { "\(point.date.rawValue)-\(point.time.text)-\($0.latitude),\($0.longitude)" }
+        } ?? []
+        return [trip.id, trip.startDate.rawValue, trip.endDate.rawValue] + located
     }
 
     private func open(_ document: TripDocument) {
@@ -128,50 +137,71 @@ struct PlanView: View {
         let points = plan.points(on: selectedDay)
         let dayNumber = (days.firstIndex(of: selectedDay) ?? 0) + 1
         let isToday = selectedDay == LocalDate(.now, calendar: calendar)
+        let weather = plans.weather(for: trip)
+        let timeline = PlanDayTimeline(day: selectedDay, points: points)
         return VStack(alignment: .leading, spacing: Spacing.s16) {
             PlanDayStrip(
                 days: days,
                 selection: $selectedDay,
                 markedDays: Set(plan.points.map(\.date)),
+                weather: weather,
                 calendar: calendar
             )
-            VStack(alignment: .leading, spacing: Spacing.s4) {
-                Text("Dzień \(dayNumber) · \(PlanDateFormat.weekdayDayMonth(selectedDay, calendar: calendar))")
-                    .typography(.title2)
-                    .foregroundStyle(.neutralInk)
-                if isToday {
-                    Text("dziś")
-                        .typography(.calloutRegular)
-                        .foregroundStyle(.neutralGray)
+            HStack(alignment: .center, spacing: Spacing.s12) {
+                VStack(alignment: .leading, spacing: Spacing.s4) {
+                    Text("Dzień \(dayNumber) · \(PlanDateFormat.weekdayDayMonth(selectedDay, calendar: calendar))")
+                        .typography(.title2)
+                        .foregroundStyle(.neutralInk)
+                    if isToday {
+                        Text("dziś")
+                            .typography(.calloutRegular)
+                            .foregroundStyle(.neutralGray)
+                    }
+                }
+                Spacer(minLength: 0)
+                if let forecast = weather?.forecast(on: selectedDay) {
+                    WeatherPill(forecast: forecast)
                 }
             }
             .padding(.horizontal, Spacing.s20)
 
-            VStack(spacing: 0) {
-                ForEach(points) { point in
-                    PlanTimelineRow(
-                        point: point,
-                        isLast: point.id == points.last?.id,
-                        showsMarker: points.count > 1,
-                        isEditable: trip.canEdit(authoredBy: point.author, userID: user.id),
-                        documents: documents.documents(attachedTo: point, in: trip),
-                        onOpenDocument: open,
-                        onTap: { pointSheet = PointSheet(point: point, date: point.date) }
-                    )
-                }
-                if points.isEmpty {
-                    Text("Nic jeszcze nie zaplanowano na ten dzień.")
-                        .typography(.calloutRegular)
-                        .foregroundStyle(.neutralGray)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.bottom, Spacing.s16)
-                }
-                DashedAddButton(title: "Dodaj punkt") {
-                    pointSheet = PointSheet(date: selectedDay)
-                }
-                .padding(.top, points.isEmpty ? 0 : Spacing.s12)
+            TimelineView(.everyMinute) { context in
+                timelineContent(timeline, now: context.date)
             }
             .padding(.horizontal, Spacing.gutter)
+        }
+    }
+
+    private func timelineContent(_ timeline: PlanDayTimeline, now: Date) -> some View {
+        let points = timeline.points
+        let travellingID = timeline.travellingPointID(at: now, calendar: calendar)
+        return VStack(spacing: 0) {
+            ForEach(points) { point in
+                PlanTimelineRow(
+                    point: point,
+                    isLast: point.id == points.last?.id,
+                    showsMarker: points.count > 1,
+                    isEditable: trip.canEdit(authoredBy: point.author, userID: user.id),
+                    isTravelling: point.id == travellingID,
+                    navigationStart: timeline.navigationIsAhead(for: point, at: now, calendar: calendar)
+                        ? timeline.navigationStart(for: point)
+                        : nil,
+                    documents: documents.documents(attachedTo: point, in: trip),
+                    onOpenDocument: open,
+                    onTap: { pointSheet = PointSheet(point: point, date: point.date) }
+                )
+            }
+            if points.isEmpty {
+                Text("Nic jeszcze nie zaplanowano na ten dzień.")
+                    .typography(.calloutRegular)
+                    .foregroundStyle(.neutralGray)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.bottom, Spacing.s16)
+            }
+            DashedAddButton(title: "Dodaj punkt") {
+                pointSheet = PointSheet(date: selectedDay)
+            }
+            .padding(.top, points.isEmpty ? 0 : Spacing.s12)
         }
     }
 
@@ -222,6 +252,29 @@ struct PlanView: View {
             loadError = error.localizedDescription
             isShowingRefreshError = true
         }
+    }
+}
+
+/// "☀ 21° · Sintra" next to the day heading.
+private struct WeatherPill: View {
+    let forecast: DayWeather
+
+    var body: some View {
+        HStack(spacing: Spacing.s6) {
+            Image(forecast.condition.icon)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 18, height: 18)
+            Text([forecast.temperatureText, forecast.place].compactMap(\.self).joined(separator: " · "))
+                .typography(.subheadEmphasis)
+                .lineLimit(1)
+        }
+        .foregroundStyle(.statusWarning)
+        .padding(.horizontal, Spacing.s12)
+        .frame(height: 34)
+        .background(.statusWarningTint, in: .capsule)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Pogoda: \(forecast.condition.label), \(forecast.temperatureText)\(forecast.place.map { ", \($0)" } ?? "")")
     }
 }
 

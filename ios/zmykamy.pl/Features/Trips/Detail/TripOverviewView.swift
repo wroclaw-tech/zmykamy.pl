@@ -163,6 +163,7 @@ struct TripOverviewView: View {
     let user: AuthUser
     @Environment(TripsStore.self) private var trips
     @Environment(DocumentsStore.self) private var documents
+    @Environment(PlanStore.self) private var plans
     @Environment(\.theme) private var theme
     @State private var isShowingNotes = false
     @State private var isEditing = false
@@ -191,6 +192,8 @@ struct TripOverviewView: View {
         }
         .task(id: trip.id) { try? await documents.load(trip) }
         .task(id: trip.id) { try? await trips.loadProgress(of: trip) }
+        .task(id: trip.id) { await plans.loadWeather(trip) }
+        .task(id: trip.id) { try? await plans.load(trip) }
         .toolbar {
             if trip.isOrganizer {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -220,6 +223,27 @@ struct TripOverviewView: View {
         }
     }
 
+    @ViewBuilder
+    private var weatherAndPlace: some View {
+        let today = LocalDate(.now, calendar: user.calendar)
+        let summary = plans.weather(for: trip)?.summary(today: today, tripStart: trip.startDate)
+        let point = trip.phase(on: today) == .past ? nil : plans.plan(for: trip)?.nextLocatedPoint(at: .now, calendar: user.calendar)
+        if summary != nil || point != nil {
+            HStack(alignment: .top, spacing: Spacing.s12) {
+                if let summary {
+                    TripWeatherTile(summary: summary, calendar: user.calendar)
+                } else {
+                    Color.clear.frame(maxWidth: .infinity)
+                }
+                if let point, let coordinate = point.coordinate {
+                    TripPlaceTile(point: point, coordinate: coordinate)
+                } else {
+                    Color.clear.frame(maxWidth: .infinity)
+                }
+            }
+        }
+    }
+
     private var tools: some View {
         let pinned = (documents.notes(for: trip) ?? []).filter(\.pinned)
         let documentCount = documents.documents(for: trip)?.count ?? 0
@@ -229,6 +253,7 @@ struct TripOverviewView: View {
             if !pinned.isEmpty {
                 PinnedNotesCard(notes: pinned, userID: user.id, isCompact: true) { _ in isShowingNotes = true }
             }
+            weatherAndPlace
             HStack(spacing: Spacing.s12) {
                 ToolTile(
                     icon: .confirmationNumber,
