@@ -92,6 +92,13 @@
       "when": 1795015598158,
       "tag": "0012_rate-limit-table",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1795016155427,
+      "tag": "0013_email-invite-table",
+      "breakpoints": true
     }
   ]
 }

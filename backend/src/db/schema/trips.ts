@@ -8,6 +8,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 import { user } from "./auth";
@@ -60,9 +61,34 @@ export const tripInvite = pgTable("trip_invite", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const tripEmailInvite = pgTable(
+  "trip_email_invite",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tripId: uuid("trip_id")
+      .notNull()
+      .references(() => trip.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    invitedBy: text("invited_by").references(() => user.id, { onDelete: "set null" }),
+    sentAt: timestamp("sent_at").defaultNow().notNull(),
+    joinedAt: timestamp("joined_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("trip_email_invite_tripId_email_idx").on(table.tripId, table.email),
+    index("trip_email_invite_email_idx").on(table.email),
+  ],
+);
+
 export const tripRelations = relations(trip, ({ many, one }) => ({
   members: many(tripMember),
   invite: one(tripInvite),
+  emailInvites: many(tripEmailInvite),
+}));
+
+export const tripEmailInviteRelations = relations(tripEmailInvite, ({ one }) => ({
+  trip: one(trip, { fields: [tripEmailInvite.tripId], references: [trip.id] }),
+  inviter: one(user, { fields: [tripEmailInvite.invitedBy], references: [user.id] }),
 }));
 
 export const tripInviteRelations = relations(tripInvite, ({ one }) => ({

@@ -9,6 +9,7 @@ import { validate } from "../lib/validation";
 import { rateLimit } from "../middleware/rate-limit";
 import { requireAuth } from "../middleware/require-auth";
 import { inviteSlugParamSchema } from "../schemas/trip";
+import { markEmailInviteJoined } from "./email-invites";
 import { findTrip, respondWithTrip } from "./trips";
 
 export const findInvitedTrip = async (slug: string) => {
@@ -49,12 +50,13 @@ export const invites = new Hono<AppEnv>()
     rateLimit("inviteJoin", "user"),
     validate("param", inviteSlugParamSchema),
     async (c) => {
-      const userId = c.get("user").id;
+      const user = c.get("user");
       const record = await findInvitedTrip(c.req.valid("param").slug);
       await db
         .insert(tripMember)
-        .values({ tripId: record.id, userId, role: "participant" })
+        .values({ tripId: record.id, userId: user.id, role: "participant" })
         .onConflictDoNothing();
-      return c.json(await respondWithTrip(record.id, userId));
+      await markEmailInviteJoined(record.id, user.email);
+      return c.json(await respondWithTrip(record.id, user.id));
     },
   );
