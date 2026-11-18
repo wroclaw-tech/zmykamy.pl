@@ -168,6 +168,8 @@ struct HomeView: View {
     @State private var polls: PollsStore
     @State private var isShowingAccount = false
     @State private var isCreatingTrip = false
+    @State private var isShowingInspiration = false
+    @State private var plannedDestination: TripDestination?
     @State private var isScanningInvite = false
     @State private var scannedInvite: String?
     @State private var openTrip: Trip?
@@ -198,6 +200,7 @@ struct HomeView: View {
                         Menu("Dodaj", image: .addRounded) {
                             Button("Nowy wyjazd", image: .addRounded) { isCreatingTrip = true }
                             Button("Dołącz przez kod QR", image: .qrCodeScanner) { isScanningInvite = true }
+                            Button("Wylosuj cel podróży", image: .explore) { isShowingInspiration = true }
                         }
                     }
                     ToolbarSpacer(.fixed, placement: .topBarTrailing)
@@ -214,6 +217,12 @@ struct HomeView: View {
                 .navigationDestination(isPresented: $isShowingAccount) {
                     ProfileView(user: user)
                 }
+                .navigationDestination(isPresented: $isShowingInspiration) {
+                    InspirationView(user: user) { destination in
+                        plannedDestination = destination
+                        isCreatingTrip = true
+                    }
+                }
                 .alert("Nie udało się odświeżyć", isPresented: $isShowingRefreshError) {
                     Button("OK", role: .cancel) {}
                 } message: {
@@ -221,8 +230,8 @@ struct HomeView: View {
                 }
         }
         .task { await load() }
-        .sheet(isPresented: $isCreatingTrip, onDismiss: openCreatedTrip) {
-            TripFormView(user: user) { created in
+        .sheet(isPresented: $isCreatingTrip, onDismiss: finishCreatingTrip) {
+            TripFormView(user: user, destination: plannedDestination) { created in
                 createdTrip = created
             }
         }
@@ -305,6 +314,7 @@ struct HomeView: View {
                     }
                     ActionRow(title: "Nowy wyjazd", icon: .addRounded) { isCreatingTrip = true }
                     ActionRow(title: "Dołącz przez kod QR", icon: .qrCodeScanner) { isScanningInvite = true }
+                    ActionRow(title: "Wylosuj cel podróży", icon: .explore) { isShowingInspiration = true }
                 }
 
                 if !sections.past.isEmpty {
@@ -328,6 +338,12 @@ struct HomeView: View {
             TripRow(trip: trip, today: today)
         }
         .buttonStyle(.plain)
+    }
+
+    private func finishCreatingTrip() {
+        plannedDestination = nil
+        if createdTrip != nil { isShowingInspiration = false }
+        openCreatedTrip()
     }
 
     private func openCreatedTrip() {
