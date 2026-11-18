@@ -6,6 +6,7 @@ import type { AppEnv } from "../lib/app-env";
 import { ApiError } from "../lib/errors";
 import { deleteFilesQuietly, fileExists, getDownloadUrl, getUploadUrl } from "../lib/storage";
 import { validate } from "../lib/validation";
+import { rateLimit } from "../middleware/rate-limit";
 import { requireAuth } from "../middleware/require-auth";
 import {
   createDocumentSchema,
@@ -130,6 +131,7 @@ export const documents = new Hono<AppEnv>()
   })
   .post(
     "/:id/documents/upload-url",
+    rateLimit("upload", "user"),
     validate("param", tripIdParamSchema),
     validate("json", documentUploadSchema),
     async (c) => {
