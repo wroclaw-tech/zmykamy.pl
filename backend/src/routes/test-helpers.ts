@@ -1,3 +1,4 @@
+import { spyOn } from "bun:test";
 import app from "../index";
 import { auth } from "../lib/auth";
 
@@ -36,3 +37,20 @@ export const createTrip = async (as: TestUser, body: unknown = lisbon) => {
   const response = await request("/trips", as, { method: "POST", body });
   return (await response.json()) as { id: string };
 };
+
+const nbpRates: Record<string, { table: "a" | "b"; mid: number; effectiveDate: string }> = {
+  EUR: { table: "a", mid: 4.25, effectiveDate: "2026-05-08" },
+  USD: { table: "a", mid: 4, effectiveDate: "2026-05-08" },
+  VND: { table: "b", mid: 0.00016, effectiveDate: "2026-05-06" },
+};
+
+// Stubs the NBP API with fixed mid rates
+export const mockNbp = (overrides: Partial<typeof nbpRates> = {}) =>
+  spyOn(globalThis, "fetch").mockImplementation((async (input: string | URL | Request) => {
+    const [table, code] = String(input).split("/rates/")[1]!.split("/");
+    const rate = { ...nbpRates, ...overrides }[code!];
+    if (!rate || rate.table !== table) {
+      return new Response("404 NotFound - Not Found - Brak danych", { status: 404 });
+    }
+    return Response.json({ rates: [{ effectiveDate: rate.effectiveDate, mid: rate.mid }] });
+  }) as typeof fetch);

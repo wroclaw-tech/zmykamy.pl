@@ -2,6 +2,7 @@ import { relations, sql } from "drizzle-orm";
 import {
   check,
   date,
+  doublePrecision,
   index,
   integer,
   pgTable,
@@ -25,6 +26,13 @@ export const expense = pgTable(
     amount: integer("amount").notNull(),
     date: date("date").notNull(),
     icon: text("icon", { enum: PLAN_ICONS }).notNull().default("savings"),
+    // Set only for expenses paid in a currency other than the trip's; `amount` holds the converted value
+    originalCurrency: text("original_currency"),
+    originalAmount: integer("original_amount"),
+    exchangeRate: doublePrecision("exchange_rate"),
+    rateSource: text("rate_source", { enum: ["nbp", "custom"] }),
+    rateDate: date("rate_date"),
+    rateTable: text("rate_table", { enum: ["A", "B", "A/B"] }),
     paidBy: text("paid_by")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
@@ -37,6 +45,11 @@ export const expense = pgTable(
   },
   (table) => [
     check("expense_amount_check", sql`${table.amount} > 0`),
+    check(
+      "expense_original_check",
+      sql`(${table.originalCurrency} IS NULL AND ${table.originalAmount} IS NULL AND ${table.exchangeRate} IS NULL AND ${table.rateSource} IS NULL)
+        OR (${table.originalCurrency} IS NOT NULL AND ${table.originalAmount} > 0 AND ${table.exchangeRate} > 0 AND ${table.rateSource} IS NOT NULL)`,
+    ),
     index("expense_tripId_date_idx").on(table.tripId, table.date),
   ],
 );

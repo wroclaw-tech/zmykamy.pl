@@ -23,3 +23,5 @@ settings:
 
 docs: |-
   The expense author or an organizer. All create fields are optional, at least one is required; shares are recomputed when `amount` or `participants` change.
+
+  `amount` is in the expense's current currency unless `currency` is sent. A custom `exchangeRate` is kept until the currency changes; send `exchangeRate: null` to switch back to the NBP rate, which is refetched when `date` changes.

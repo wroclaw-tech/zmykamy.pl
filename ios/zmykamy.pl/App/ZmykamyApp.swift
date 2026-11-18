@@ -18,7 +18,17 @@ struct ZmykamyApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
+            Group {
+                #if DEBUG
+                if ProcessInfo.processInfo.arguments.contains("-toolsPreview") {
+                    ToolsPreview()
+                } else {
+                    RootView()
+                }
+                #else
+                RootView()
+                #endif
+            }
                 .environment(auth)
                 .environment(inviteRouter)
                 .onOpenURL { inviteRouter.open($0) }

@@ -27,6 +27,8 @@ nonisolated struct LocalDate: Codable, Hashable, Comparable, Sendable {
         self.init(year: parts[0], month: parts[1], day: parts[2])
     }
 
+    var rawValue: String { String(format: "%04d-%02d-%02d", year, month, day) }
+
     func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         try container.encode(String(format: "%04d-%02d-%02d", year, month, day))

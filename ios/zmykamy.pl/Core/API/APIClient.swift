@@ -13,10 +13,11 @@ nonisolated final class APIClient: Sendable {
     func send<Response: Decodable>(
         _ method: String,
         _ path: String,
+        query: [URLQueryItem] = [],
         body: (some Encodable & Sendable)? = String?.none,
         token: String? = nil
     ) async throws(APIError) -> Response {
-        let data = try await perform(method, path, body: body, token: token)
+        let data = try await perform(method, path, query: query, body: body, token: token)
         do {
             return try Self.decoder.decode(Response.self, from: data)
         } catch {
@@ -27,10 +28,11 @@ nonisolated final class APIClient: Sendable {
     func send(
         _ method: String,
         _ path: String,
+        query: [URLQueryItem] = [],
         body: (some Encodable & Sendable)? = String?.none,
         token: String? = nil
     ) async throws(APIError) {
-        _ = try await perform(method, path, body: body, token: token)
+        _ = try await perform(method, path, query: query, body: body, token: token)
     }
 
     /// Uploads straight to storage through a presigned URL, so no bearer token is sent.
@@ -60,10 +62,14 @@ nonisolated final class APIClient: Sendable {
     private func perform(
         _ method: String,
         _ path: String,
+        query: [URLQueryItem] = [],
         body: (some Encodable & Sendable)?,
         token: String?
     ) async throws(APIError) -> Data {
-        var request = URLRequest(url: baseURL.appending(path: path))
+        var components = URLComponents(url: baseURL.appending(path: path), resolvingAgainstBaseURL: false)!
+        if !query.isEmpty { components.queryItems = query }
+        guard let url = components.url else { throw .validation }
+        var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         if let token {

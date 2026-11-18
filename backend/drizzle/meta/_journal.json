@@ -71,6 +71,20 @@
       "when": 1793786734018,
       "tag": "0009_free_yellow_claw",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794524662421,
+      "tag": "0010_salty_leader",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794526390373,
+      "tag": "0011_expense-rate-table",
+      "breakpoints": true
     }
   ]
 }

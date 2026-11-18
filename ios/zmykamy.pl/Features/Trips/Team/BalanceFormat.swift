@@ -5,7 +5,7 @@ nonisolated enum BalanceFormat {
 
     /// Signed amount in the trip currency, e.g. `+3 358,67 zł`; zero has no sign.
     static func string(minorUnits: Int, currency: String) -> String {
-        (Decimal(minorUnits) / 100).formatted(
+        (Decimal(minorUnits) / MoneyFormat.scale(for: currency)).formatted(
             .currency(code: currency)
                 .locale(locale)
                 .sign(strategy: .always(showZero: false))

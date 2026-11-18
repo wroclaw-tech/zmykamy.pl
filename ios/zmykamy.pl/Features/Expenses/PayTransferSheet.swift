@@ -74,7 +74,7 @@ struct PayTransferSheet: View {
     }
 
     private func amountForCopy(_ minorUnits: Int) -> String {
-        String(format: "%d,%02d", minorUnits / 100, minorUnits % 100)
+        MoneyFormat.input(minorUnits: minorUnits, currency: trip.currency)
     }
 
     private func copyRow(label: String, value: String, copyValue: String, isMonospaced: Bool = false) -> some View {

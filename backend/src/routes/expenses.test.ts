@@ -1,9 +1,10 @@
-import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { trip, tripMember, user } from "../db/schema";
 import app from "../index";
-import { createTrip, createUser, request, type TestUser } from "./test-helpers";
+import { clearExchangeRateCache } from "../lib/exchange-rates";
+import { createTrip, createUser, mockNbp, request, type TestUser } from "./test-helpers";
 
 beforeAll(() => {
   if (!process.env.DATABASE_URL?.endsWith("_test")) {
@@ -191,6 +192,235 @@ describe("expenses", () => {
       method: "DELETE",
     });
     expect(response.status).toBe(404);
+  });
+});
+
+type ExpenseResponse = {
+  title: string;
+  amount: number;
+  shares: { amount: number }[];
+  original: {
+    currency: string;
+    amount: number;
+    exchangeRate: number;
+    rateSource: "nbp" | "custom";
+    rateDate: string | null;
+    rateTable: "A" | "B" | "A/B" | null;
+  } | null;
+};
+
+describe("foreign currency expenses", () => {
+  let fetchSpy: ReturnType<typeof mockNbp>;
+
+  beforeEach(() => {
+    clearExchangeRateCache();
+    fetchSpy = mockNbp();
+  });
+
+  afterEach(() => fetchSpy.mockRestore());
+
+  const addForeign = async (as: TestUser, tripId: string, extra: Record<string, unknown>) => {
+    const response = await request(`/trips/${tripId}/expenses`, as, {
+      method: "POST",
+      body: { ...dinner(as.id, [as.id]), ...extra },
+    });
+    return {
+      status: response.status,
+      body: (await response.json()) as ExpenseResponse & { id: string },
+    };
+  };
+
+  test("converts to the trip currency at the NBP mid rate", async () => {
+    const { kuba, ola, id } = await setup();
+    const { status, body } = await addForeign(kuba, id, {
+      amount: 42500,
+      currency: "PLN",
+      participants: [kuba.id, ola.id],
+    });
+    expect(status).toBe(201);
+    expect(body.amount).toBe(10000);
+    expect(body.shares.map((share) => share.amount)).toEqual([5000, 5000]);
+    expect(body.original).toMatchObject({
+      currency: "PLN",
+      amount: 42500,
+      rateSource: "nbp",
+      rateDate: "2026-05-08",
+      rateTable: "A",
+    });
+    expect(body.original!.exchangeRate).toBeCloseTo(1 / 4.25);
+  });
+
+  test("persists mixed-table attribution in the expense list", async () => {
+    const { kuba, id } = await setup();
+    const { status, body } = await addForeign(kuba, id, { amount: 1000000, currency: "VND" });
+    expect(status).toBe(201);
+    expect(body.original?.rateTable).toBe("A/B");
+    const response = await request(`/trips/${id}/expenses`, kuba);
+    const listed = (await response.json()) as { expenses: ExpenseResponse[] };
+    expect(listed.expenses[0]?.original?.rateTable).toBe("A/B");
+  });
+
+  test("uses a custom rate when given", async () => {
+    const { kuba, id } = await setup();
+    const { body } = await addForeign(kuba, id, {
+      amount: 10000,
+      currency: "USD",
+      exchangeRate: 0.9,
+    });
+    expect(body.amount).toBe(9000);
+    expect(body.original).toMatchObject({
+      rateSource: "custom",
+      exchangeRate: 0.9,
+      rateDate: null,
+      rateTable: null,
+    });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  test("stores amounts in the trip currency as they are", async () => {
+    const { kuba, id } = await setup();
+    const { body } = await addForeign(kuba, id, { currency: "EUR" });
+    expect(body.amount).toBe(9000);
+    expect(body.original).toBeNull();
+  });
+
+  test("rejects currencies without an NBP rate", async () => {
+    const { kuba, id } = await setup();
+    const { status, body } = await addForeign(kuba, id, { currency: "XAU" });
+    expect(status).toBe(422);
+    expect(body).toMatchObject({ error: { code: "unsupported_currency" } });
+  });
+
+  test("recomputes the amount on edits", async () => {
+    const { kuba, id } = await setup();
+    const { body: created } = await addForeign(kuba, id, { amount: 10000, currency: "USD" });
+    expect(created.amount).toBe(9412);
+    const patch = async (body: unknown) =>
+      (await (
+        await request(`/trips/${id}/expenses/${created.id}`, kuba, { method: "PATCH", body })
+      ).json()) as ExpenseResponse;
+
+    expect((await patch({ amount: 20000, currency: "USD" })).amount).toBe(18824);
+    const custom = await patch({ exchangeRate: 1 });
+    expect(custom.amount).toBe(20000);
+    expect(custom.original?.rateTable).toBeNull();
+    expect((await patch({ date: "2027-05-14" })).original).toMatchObject({
+      rateSource: "custom",
+      exchangeRate: 1,
+    });
+    expect((await patch({ exchangeRate: null })).original).toMatchObject({
+      rateSource: "nbp",
+      rateTable: "A",
+    });
+    const local = await patch({ currency: "EUR", amount: 5000 });
+    expect(local.amount).toBe(5000);
+    expect(local.original).toBeNull();
+  });
+
+  test("leaves the amount alone when only other fields change", async () => {
+    const { kuba, id } = await setup();
+    const { body: created } = await addForeign(kuba, id, { amount: 10000, currency: "USD" });
+    fetchSpy.mockClear();
+    await request(`/trips/${id}/expenses/${created.id}`, kuba, {
+      method: "PATCH",
+      body: { title: "Obiad" },
+    });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  const patchExpense = async (as: TestUser, tripId: string, expenseId: string, body: unknown) => {
+    const response = await request(`/trips/${tripId}/expenses/${expenseId}`, as, {
+      method: "PATCH",
+      body,
+    });
+    return { status: response.status, body: (await response.json()) as ExpenseResponse };
+  };
+
+  test("keeps the amount when a client without currencies edits the title", async () => {
+    const { kuba, id } = await setup();
+    const { body: created } = await addForeign(kuba, id, { amount: 10000, currency: "USD" });
+    const legacy = { ...dinner(kuba.id, [kuba.id]), title: "Obiad", amount: created.amount };
+    const { body } = await patchExpense(kuba, id, created.id, legacy);
+    expect(body.title).toBe("Obiad");
+    expect(body.amount).toBe(9412);
+    expect(body.original).toMatchObject({ currency: "USD", amount: 10000, rateSource: "nbp" });
+  });
+
+  test("reads a changed amount from a client without currencies as the trip currency", async () => {
+    const { kuba, id } = await setup();
+    const { body: created } = await addForeign(kuba, id, { amount: 10000, currency: "USD" });
+    const legacy = { ...dinner(kuba.id, [kuba.id]), amount: 12000 };
+    const { body } = await patchExpense(kuba, id, created.id, legacy);
+    expect(body.amount).toBe(12000);
+    expect(body.original).toBeNull();
+  });
+
+  test("keeps the stored NBP rate until the day changes", async () => {
+    const { kuba, id } = await setup();
+    const { body: created } = await addForeign(kuba, id, { amount: 10000, currency: "USD" });
+    fetchSpy.mockRestore();
+    fetchSpy = mockNbp({ USD: { table: "a", mid: 4.25, effectiveDate: "2026-05-09" } });
+    const form = { ...dinner(kuba.id, [kuba.id]), currency: "USD", exchangeRate: null };
+
+    const renamed = await patchExpense(kuba, id, created.id, {
+      ...form,
+      title: "Obiad",
+      amount: 10000,
+    });
+    expect(renamed.body.amount).toBe(9412);
+    expect(renamed.body.original).toMatchObject({ rateDate: "2026-05-08", rateTable: "A" });
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    const resized = await patchExpense(kuba, id, created.id, { ...form, amount: 20000 });
+    expect(resized.body.amount).toBe(18824);
+    expect(resized.body.original?.rateDate).toBe("2026-05-08");
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    const moved = await patchExpense(kuba, id, created.id, {
+      ...form,
+      amount: 20000,
+      date: "2027-05-14",
+    });
+    expect(moved.body.amount).toBe(20000);
+    expect(moved.body.original?.exchangeRate).toBe(1);
+  });
+
+  test("rejects converted amounts above the limit", async () => {
+    const { kuba, id } = await setup();
+    const huge = { amount: 100_000_000, currency: "USD", exchangeRate: 1_000_000 };
+    const { status, body } = await addForeign(kuba, id, huge);
+    expect(status).toBe(400);
+    expect(body).toMatchObject({ error: { code: "amount_too_large" } });
+
+    const atLimit = await addForeign(kuba, id, {
+      amount: 50_000_000,
+      currency: "USD",
+      exchangeRate: 2,
+    });
+    expect(atLimit.status).toBe(201);
+    expect(atLimit.body.amount).toBe(100_000_000);
+
+    const edited = await patchExpense(kuba, id, atLimit.body.id, { exchangeRate: 1_000_000 });
+    expect(edited.status).toBe(400);
+    expect(edited.body).toMatchObject({ error: { code: "amount_too_large" } });
+  });
+
+  test("rejects custom rates with more than 6 decimal places", async () => {
+    const { kuba, id } = await setup();
+    const { status } = await addForeign(kuba, id, {
+      currency: "USD",
+      exchangeRate: 4.1234567,
+    });
+    expect(status).toBe(400);
+  });
+
+  test("returns the rate for a day", async () => {
+    const { kuba, id } = await setup();
+    const response = await request(`/trips/${id}/exchange-rate?currency=usd&date=2026-05-10`, kuba);
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { from: string; to: string; rate: number };
+    expect(body).toMatchObject({ from: "USD", to: "EUR", effectiveDate: "2026-05-08", table: "A" });
+    expect(body.rate).toBeCloseTo(4 / 4.25);
   });
 });
 

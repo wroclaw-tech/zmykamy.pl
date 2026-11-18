@@ -4,14 +4,17 @@ struct IconBadge<Foreground: ShapeStyle, Background: ShapeStyle>: View {
     let image: ImageResource
     let foreground: Foreground
     let background: Background
+    var size: CGFloat = 34
+    var iconSize: CGFloat = 20
+    var cornerRadius: CGFloat = Radius.xs
 
     var body: some View {
         Image(image)
             .resizable()
             .scaledToFit()
-            .frame(width: 20, height: 20)
+            .frame(width: iconSize, height: iconSize)
             .foregroundStyle(foreground)
-            .frame(width: 34, height: 34)
-            .background(background, in: .rect(cornerRadius: Radius.xs))
+            .frame(width: size, height: size)
+            .background(background, in: .rect(cornerRadius: cornerRadius))
     }
 }

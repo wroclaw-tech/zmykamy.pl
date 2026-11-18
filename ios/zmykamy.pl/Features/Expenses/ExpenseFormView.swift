@@ -8,6 +8,17 @@ struct ExpenseFormView: View {
     @Environment(ExpensesStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @Environment(\.theme) private var theme
+    @State private var currency: String
+    @State private var loadedRateKey: String?
+    @State private var quote: RateQuote?
+    @State private var rateError: String?
+    @State private var isLoadingRate = false
+    @State private var customRateText: String
+    @State private var usesCustomRate: Bool
+    @State private var isChoosingCurrency = false
+    @State private var isPickingDate = false
+    @State private var isPickingCategory = false
+    @State private var isShowingScanInfo = false
     @State private var amountText: String
     @State private var title: String
     @State private var paidBy: String
@@ -19,12 +30,18 @@ struct ExpenseFormView: View {
     @State private var errorMessage = ""
     @State private var isShowingError = false
     @FocusState private var isAmountFocused: Bool
+    @FocusState private var isRateFocused: Bool
 
-    init(trip: Trip, user: AuthUser, expense: Expense? = nil) {
+    init(trip: Trip, user: AuthUser, expense: Expense? = nil, draft: ExpenseDraft? = nil) {
         self.trip = trip
         self.user = user
         self.expense = expense
-        _amountText = State(initialValue: expense.map { MoneyFormat.input(minorUnits: $0.amount) } ?? "")
+        let enteredCurrency = expense?.original?.currency ?? draft?.currency ?? trip.currency
+        let enteredAmount = expense?.original?.amount ?? expense?.amount ?? draft?.amount
+        _currency = State(initialValue: enteredCurrency)
+        _amountText = State(initialValue: enteredAmount.map { MoneyFormat.input(minorUnits: $0, currency: enteredCurrency) } ?? "")
+        _usesCustomRate = State(initialValue: expense?.original?.rateSource == "custom")
+        _customRateText = State(initialValue: expense?.original.map { String($0.exchangeRate).replacingOccurrences(of: ".", with: ",") } ?? "")
         _title = State(initialValue: expense?.title ?? "")
         _paidBy = State(initialValue: expense?.paidBy.userId ?? user.id)
         _participants = State(initialValue: Set(expense?.shares.map(\.userId) ?? trip.members.map(\.userId)))
@@ -51,23 +68,44 @@ struct ExpenseFormView: View {
     }
 
     private var amount: Int? {
-        MoneyFormat.minorUnits(from: amountText)
+        MoneyFormat.minorUnits(from: amountText, currency: currency)
     }
+
+    private var exchangeRate: Double? {
+        if currency == trip.currency { return 1 }
+        if usesCustomRate {
+            guard let decimal = MoneyFormat.decimal(from: customRateText) else { return nil }
+            let rate = MoneyFormat.roundedRate(NSDecimalNumber(decimal: decimal).doubleValue)
+            return rate.isFinite && rate > 0 && rate <= 1_000_000 ? rate : nil
+        }
+        return loadedRateKey == rateKey ? quote?.value.rate : nil
+    }
+
+    private var convertedAmount: Int? {
+        guard let amount, let exchangeRate else { return nil }
+        return MoneyFormat.convert(amount, from: currency, to: trip.currency, rate: exchangeRate)
+    }
+
+    private var rateKey: String { "\(currency)-\(LocalDate(date, calendar: calendar).rawValue)" }
 
     private var trimmedTitle: String {
         title.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private var shares: [String: Int] {
-        ExpenseSplit.evenly(amount ?? 0, between: Array(participants))
+        ExpenseSplit.evenly(convertedAmount ?? 0, between: Array(participants))
+    }
+
+    private var isTooLarge: Bool {
+        (amount ?? 0) > MoneyFormat.maxAmount || (convertedAmount ?? 0) > MoneyFormat.maxAmount
     }
 
     private var canSave: Bool {
-        isEditable && amount != nil && !trimmedTitle.isEmpty && !participants.isEmpty && !isSaving
+        isEditable && !isTooLarge && (convertedAmount ?? 0) > 0 && !trimmedTitle.isEmpty && !participants.isEmpty && !isSaving && (usesCustomRate || !isLoadingRate)
     }
 
     private var currencySymbol: String {
-        MoneyFormat.symbol(currency: trip.currency)
+        MoneyFormat.symbol(currency: currency)
     }
 
     var body: some View {
@@ -77,17 +115,10 @@ struct ExpenseFormView: View {
                     Group {
                         amountHeader
                         titleField
+                        detailsRow
+                        currencyCard
                         payerPicker
                         splitList
-                        FormCard(title: "Kiedy?") {
-                            FormFieldRow {
-                                DatePicker("Dzień", selection: $date, displayedComponents: .date)
-                                    .typography(.bodyRegular)
-                            }
-                        }
-                        FormCard(title: "Kategoria") {
-                            PlanIconPicker(selection: $icon)
-                        }
                     }
                     .disabled(!isEditable)
                     if !isEditable {
@@ -142,8 +173,31 @@ struct ExpenseFormView: View {
         .environment(\.locale, calendar.locale ?? .current)
         .tint(theme.accent)
         .interactiveDismissDisabled(isSaving)
+        .sheet(isPresented: $isChoosingCurrency) {
+            NavigationStack { CurrencyPickerView(selection: $currency) }
+        }
+        .sheet(isPresented: $isPickingCategory) {
+            NavigationStack {
+                ScrollView { PlanIconPicker(selection: $icon).padding(Spacing.gutter) }
+                    .navigationTitle("Kategoria")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button(role: .confirm) { isPickingCategory = false }
+                        }
+                    }
+            }
+            .presentationDetents([.medium])
+            .tint(theme.accent)
+        }
+        .alert("Skanowanie paragonów już wkrótce", isPresented: $isShowingScanInfo) {
+            Button("OK", role: .cancel) {}
+        }
+        .task(id: rateKey) { await loadRate() }
+        .refreshRatesOnReconnect { await loadRate() }
+        .onChange(of: currency) { _, _ in usesCustomRate = false }
         .task {
-            guard expense == nil else { return }
+            guard expense == nil, amountText.isEmpty else { return }
             try? await Task.sleep(for: .milliseconds(500))
             isAmountFocused = true
         }
@@ -151,7 +205,7 @@ struct ExpenseFormView: View {
 
     private var amountHeader: some View {
         VStack(spacing: Spacing.s4) {
-            HStack(alignment: .firstTextBaseline, spacing: Spacing.s6) {
+            HStack(alignment: .firstTextBaseline, spacing: Spacing.s12) {
                 TextField("0", text: $amountText)
                     .keyboardType(.decimalPad)
                     .focused($isAmountFocused)
@@ -161,23 +215,26 @@ struct ExpenseFormView: View {
                     .fixedSize()
                     .accessibilityLabel("Kwota")
                 Text(currencySymbol)
-                    .typography(.title1)
+                    .typography(.displayCurrency)
                     .foregroundStyle(.neutralGray2)
             }
             .frame(maxWidth: .infinity)
             .contentShape(.rect)
             .onTapGesture { isAmountFocused = true }
             Text(perPersonText)
-                .typography(.footnote)
-                .foregroundStyle(.neutralGray)
+                .typography(.subheadRegular)
+                .foregroundStyle(isTooLarge ? Color.statusDanger : .neutralGray)
         }
         .padding(.vertical, Spacing.s16)
     }
 
     private var perPersonText: String {
+        guard !isTooLarge else { return currency == trip.currency ? "Kwota jest za duża" : "Kwota po przeliczeniu jest za duża" }
         guard !participants.isEmpty else { return "Wybierz, na kogo dzielimy" }
-        let perPerson = (amount ?? 0) / participants.count
-        return "\(MoneyFormat.string(minorUnits: perPerson, currency: trip.currency)) na osobę · \(participants.count) os."
+        guard let convertedAmount else { return "Wybierz kurs przeliczenia" }
+        let perPerson = Int((Double(convertedAmount) / Double(participants.count)).rounded())
+        let prefix = currency == trip.currency ? "" : "≈ \(MoneyFormat.precise(minorUnits: convertedAmount, currency: trip.currency)) · "
+        return prefix + "\(MoneyFormat.string(minorUnits: perPerson, currency: trip.currency)) na osobę · \(participants.count) os."
     }
 
     private var titleField: some View {
@@ -185,16 +242,220 @@ struct ExpenseFormView: View {
             Image(.edit)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 20, height: 20)
+                .frame(width: 22, height: 22)
                 .foregroundStyle(.neutralGray)
             TextField("Opis", text: $title, prompt: Text("Na co?"))
                 .typography(.bodyLarge)
                 .foregroundStyle(.neutralInk)
                 .textInputAutocapitalization(.sentences)
+            // Receipt scanning comes with ZMY-51
+            Button { isShowingScanInfo = true } label: {
+                HStack(spacing: 5) {
+                    Image(.photoCamera)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 18, height: 18)
+                    Text("Skanuj")
+                        .typography(.subheadEmphasis)
+                }
+                .foregroundStyle(theme.accentStrong)
+                .padding(.leading, 9)
+                .padding(.trailing, 11)
+                .frame(height: 32)
+                .background(theme.accentTint, in: .capsule)
+            }
+            .buttonStyle(.plain)
         }
-        .padding(.horizontal, Spacing.s16)
+        .padding(.leading, Spacing.s16)
+        .padding(.trailing, 10)
         .frame(height: 52)
         .background(.neutralWhite, in: .rect(cornerRadius: Radius.md))
+    }
+
+    private var detailsRow: some View {
+        HStack(spacing: Spacing.s8) {
+            detailChip(icon: .calendarToday, text: date.formatted(.dateTime.day().month(.abbreviated).locale(calendar.locale ?? .current))) {
+                isPickingDate = true
+            }
+            .accessibilityLabel("Dzień: \(date.formatted(date: .long, time: .omitted))")
+            .popover(isPresented: $isPickingDate) {
+                DatePicker("Dzień", selection: $date, displayedComponents: .date)
+                    .datePickerStyle(.graphical)
+                    .labelsHidden()
+                    .padding(Spacing.s12)
+                    .frame(width: 340)
+                    .presentationCompactAdaptation(.popover)
+                    .tint(theme.accent)
+            }
+            detailChip(icon: icon.resource, text: icon.label) { isPickingCategory = true }
+                .accessibilityLabel("Kategoria: \(icon.label)")
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func detailChip(icon: ImageResource, text: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: Spacing.s6) {
+                Image(icon)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 18, height: 18)
+                    .foregroundStyle(theme.accent)
+                Text(text)
+                    .typography(.calloutEmphasis)
+                    .foregroundStyle(.neutralInk)
+                    .lineLimit(1)
+                Image(.expandMore)
+                    .resizable()
+                    .frame(width: 18, height: 18)
+                    .foregroundStyle(.neutralGray)
+            }
+            .padding(.leading, Spacing.s14)
+            .padding(.trailing, Spacing.s8)
+            .frame(height: 42)
+            .background(.neutralWhite, in: .capsule)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var currencyCard: some View {
+        VStack(alignment: .leading, spacing: Spacing.s8) {
+            ListCard(separatorInset: 62) {
+                HStack(spacing: Spacing.s12) {
+                    IconBadge(image: .currencyExchange, foreground: theme.accent, background: theme.accentTint)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Waluta wydatku").typography(.bodyRegular)
+                        Text("Waluta wyjazdu: \(trip.currency)").typography(.footnote).foregroundStyle(.neutralGray)
+                    }
+                    Spacer(minLength: 0)
+                    Button { isChoosingCurrency = true } label: {
+                        HStack(spacing: 2) {
+                            Text("\(currency) · \(currencySymbol)")
+                            Image(.expandMore)
+                                .resizable()
+                                .frame(width: 18, height: 18)
+                        }
+                        .typography(.subheadEmphasis)
+                        .foregroundStyle(theme.accentStrong)
+                        .padding(.leading, Spacing.s12)
+                        .padding(.trailing, Spacing.s8)
+                        .padding(.vertical, Spacing.s6)
+                        .background(theme.accentTint, in: .capsule)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Waluta wydatku: \(currency)")
+                }
+                .padding(.horizontal, Spacing.s14)
+                .padding(.vertical, 11)
+                if currency != trip.currency {
+                    if usesCustomRate {
+                        rateRow
+                    } else {
+                        Button(action: startCustomRate) { rateRow }
+                            .buttonStyle(.plain)
+                            .accessibilityHint("Stuknij, aby wpisać własny kurs")
+                    }
+                }
+            }
+            if currency != trip.currency {
+                if usesCustomRate {
+                    Button("Wróć do kursu NBP") { usesCustomRate = false }
+                        .typography(.subheadEmphasis)
+                        .foregroundStyle(theme.accentStrong)
+                        .padding(.horizontal, Spacing.s6)
+                } else if let rateError {
+                    Text(rateError).typography(.footnote).foregroundStyle(.statusDanger)
+                        .padding(.horizontal, Spacing.s6)
+                    Button("Spróbuj ponownie") { Task { await loadRate() } }
+                        .typography(.subheadEmphasis)
+                        .padding(.horizontal, Spacing.s6)
+                } else if quote?.isOffline == true {
+                    Text("Kurs zapisany offline. Przy zapisie sprawdzimy kurs NBP ponownie.")
+                        .typography(.footnote).foregroundStyle(.neutralGray)
+                        .padding(.horizontal, Spacing.s6)
+                }
+            }
+        }
+    }
+
+    private var rateRow: some View {
+        HStack(spacing: Spacing.s12) {
+            IconBadge(image: .accountBalance, foreground: theme.accent, background: theme.accentTint)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(usesCustomRate ? "Własny kurs" : "Kurs średni NBP")
+                    .typography(.bodyRegular)
+                    .foregroundStyle(.neutralInk)
+                if let rateSubtitle {
+                    Text(rateSubtitle).typography(.footnote).foregroundStyle(.neutralGray)
+                }
+            }
+            Spacer(minLength: 0)
+            VStack(alignment: .trailing, spacing: 0) {
+                if usesCustomRate {
+                    HStack(spacing: Spacing.s4) {
+                        TextField("0,0000", text: $customRateText)
+                            .keyboardType(.decimalPad)
+                            .focused($isRateFocused)
+                            .multilineTextAlignment(.trailing)
+                            .frame(maxWidth: 96)
+                            .accessibilityLabel("Kurs za 1 \(currency)")
+                        Text(MoneyFormat.symbol(currency: trip.currency))
+                    }
+                    .typography(.calloutEmphasis)
+                    .foregroundStyle(.neutralInk)
+                } else if isLoadingRate {
+                    ProgressView()
+                } else if let exchangeRate {
+                    Text("\(Self.rateText(exchangeRate)) \(MoneyFormat.symbol(currency: trip.currency))")
+                        .typography(.calloutEmphasis)
+                        .foregroundStyle(.neutralInk)
+                }
+                if usesCustomRate || (!isLoadingRate && exchangeRate != nil) {
+                    Text("za 1 \(currencySymbol)").typography(.captionRegular).foregroundStyle(.neutralGray)
+                }
+            }
+        }
+        .padding(.horizontal, Spacing.s14)
+        .padding(.vertical, 11)
+        .contentShape(.rect)
+    }
+
+    private var rateSubtitle: String? {
+        if usesCustomRate { return "Zamiast kursu NBP" }
+        guard let quote else { return nil }
+        return [quote.value.table.map { "Tabela \($0)" }, quote.value.dateLabel].compactMap { $0 }.joined(separator: " · ")
+    }
+
+    private static func rateText(_ rate: Double) -> String {
+        rate.formatted(.number.locale(Locale(identifier: "pl_PL")).grouping(.never).precision(.fractionLength(4...6)))
+    }
+
+    private func startCustomRate() {
+        if customRateText.isEmpty, let rate = quote?.value.rate {
+            customRateText = Self.rateText(rate)
+        }
+        usesCustomRate = true
+        isRateFocused = true
+    }
+
+    private func loadRate() async {
+        guard !Task.isCancelled else { return }
+        let requestedKey = rateKey
+        let requestedCurrency = currency
+        quote = nil
+        rateError = nil
+        guard currency != trip.currency else { isLoadingRate = false; return }
+        isLoadingRate = true
+        do {
+            let fetched = try await store.rates.quote(from: requestedCurrency, to: trip.currency, on: LocalDate(date, calendar: calendar), in: trip)
+            guard !Task.isCancelled, requestedKey == rateKey else { return }
+            quote = fetched
+            loadedRateKey = requestedKey
+        } catch {
+            guard !Task.isCancelled, requestedKey == rateKey else { return }
+            rateError = error.localizedDescription
+        }
+        if requestedKey == rateKey { isLoadingRate = false }
     }
 
     private var payerPicker: some View {
@@ -218,15 +479,22 @@ struct ExpenseFormView: View {
         let isViewer = member.userId == user.id
         return Button { paidBy = member.userId } label: {
             HStack(spacing: Spacing.s8) {
-                PersonAvatar(userID: member.userId, name: member.name, isViewer: isViewer, size: 30)
-                    .overlay { if isSelected { Circle().fill(.neutralWhite.opacity(0.25)) } }
+                if isSelected {
+                    Text(String(member.name.prefix(1)).uppercased())
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(.neutralWhite)
+                        .frame(width: 32, height: 32)
+                        .background(.neutralWhite.opacity(0.28), in: .circle)
+                } else {
+                    PersonAvatar(userID: member.userId, name: member.name, isViewer: isViewer, size: 32)
+                }
                 Text(isViewer ? "Ty" : member.name)
                     .typography(.calloutEmphasis)
                     .foregroundStyle(isSelected ? .neutralWhite : .neutralInk)
             }
-            .padding(.leading, Spacing.s4)
+            .padding(.leading, 5)
             .padding(.trailing, Spacing.s14)
-            .frame(height: 40)
+            .frame(height: 42)
             .background(isSelected ? theme.accent : .neutralWhite, in: .capsule)
         }
         .buttonStyle(.plain)
@@ -240,21 +508,27 @@ struct ExpenseFormView: View {
                     .typography(.sectionLabel)
                     .foregroundStyle(.neutralGray)
                 Spacer()
-                Button(participants.count == trip.members.count ? "Nikt" : "Wszyscy") {
+                Button(splitCountText) {
                     participants = participants.count == trip.members.count ? [] : Set(trip.members.map(\.userId))
                 }
                 .typography(.calloutEmphasis)
                 .foregroundStyle(theme.accentStrong)
+                .accessibilityHint(participants.count == trip.members.count ? "Odznacz wszystkich" : "Zaznacz wszystkich")
             }
             .padding(.horizontal, Spacing.s6)
             .padding(.top, Spacing.s8)
 
-            ListCard(separatorInset: Spacing.s14) {
+            ListCard(cornerRadius: Radius.lg) {
                 ForEach(members) { member in
                     splitRow(member)
                 }
             }
         }
+    }
+
+    // "Z" takes the genitive: "4 z 6 osób", "1 z 1 osoby"
+    private var splitCountText: String {
+        "\(participants.count) z \(trip.members.count) \(trip.members.count == 1 ? "osoby" : "osób")"
     }
 
     private func splitRow(_ member: TripMember) -> some View {
@@ -274,7 +548,7 @@ struct ExpenseFormView: View {
                     .foregroundStyle(.neutralInk)
                 Spacer()
                 Text(isIncluded ? MoneyFormat.string(minorUnits: shares[member.userId] ?? 0, currency: trip.currency) : "—")
-                    .typography(.subheadRegular)
+                    .typography(.calloutRegular)
                     .foregroundStyle(.neutralGray)
                 Group {
                     if isIncluded {
@@ -286,10 +560,10 @@ struct ExpenseFormView: View {
                             .strokeBorder(.neutralGray3, lineWidth: 1.5)
                     }
                 }
-                .frame(width: 22, height: 22)
+                .frame(width: 26, height: 26)
             }
             .padding(.horizontal, Spacing.s14)
-            .frame(height: 50)
+            .frame(height: 52)
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
@@ -297,14 +571,16 @@ struct ExpenseFormView: View {
     }
 
     private func save() {
-        guard let amount else { return }
+        guard canSave, let amount else { return }
         let request = ExpenseRequest(
             title: trimmedTitle,
             amount: amount,
             date: LocalDate(date, calendar: calendar),
             icon: icon,
             paidBy: paidBy,
-            participants: participants.sorted()
+            participants: participants.sorted(),
+            currency: currency,
+            exchangeRate: usesCustomRate ? .some(exchangeRate) : expense == nil ? nil : .some(nil)
         )
         run { () async throws(APIError) in
             if let expense {

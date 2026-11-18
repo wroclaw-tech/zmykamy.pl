@@ -9,6 +9,7 @@ struct Typography {
     static let displayLogo = Typography(size: 46, weight: .heavy, tracking: -2)
     static let displayCountdown = Typography(size: 42, weight: .heavy, tracking: -1.4)
     static let titleLarge = Typography(size: 34, weight: .bold, tracking: -0.6)
+    static let displayCurrency = Typography(size: 30, weight: .bold)
     static let title1 = Typography(size: 26, weight: .bold, tracking: -0.6)
     static let title2 = Typography(size: 22, weight: .bold, tracking: -0.4)
     static let title3 = Typography(size: 20, weight: .bold, tracking: -0.3)

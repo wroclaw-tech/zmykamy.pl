@@ -12,6 +12,7 @@ final class FakeBackend: @unchecked Sendable {
         let path: String
         let headers: [String: String]
         let body: Data?
+        var query: [String: String] = [:]
 
         func header(_ name: String) -> String? {
             headers.first { $0.key.caseInsensitiveCompare(name) == .orderedSame }?.value
@@ -122,7 +123,8 @@ final class FakeBackend: @unchecked Sendable {
             method: method,
             path: path,
             headers: request.allHTTPHeaderFields ?? [:],
-            body: request.httpBody ?? request.httpBodyStream.map(Self.read)
+            body: request.httpBody ?? request.httpBodyStream.map(Self.read),
+            query: Dictionary((URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []).map { ($0.name, $0.value ?? "") }, uniquingKeysWith: { _, last in last })
         )
         return lock.withLock {
             recorded.append(recordedRequest)

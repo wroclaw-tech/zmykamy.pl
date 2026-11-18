@@ -5,6 +5,7 @@ import { expense, expenseShare, settlementPayment, user } from "../db/schema";
 import type { AppEnv } from "../lib/app-env";
 import { getTripLedger } from "../lib/balances";
 import { ApiError } from "../lib/errors";
+import { convertAmount, getExchangeRate } from "../lib/exchange-rates";
 import {
   computeBalances,
   countNaiveTransfers,
@@ -16,7 +17,9 @@ import { requireAuth } from "../middleware/require-auth";
 import {
   createExpenseSchema,
   createPaymentSchema,
+  exchangeRateQuerySchema,
   expenseParamSchema,
+  MAX_AMOUNT,
   paymentParamSchema,
   updateExpenseSchema,
 } from "../schemas/expense";
@@ -43,6 +46,17 @@ const toExpenseResponse = (record: ExpenseRecord) => ({
   amount: record.amount,
   date: record.date,
   icon: record.icon,
+  original:
+    record.originalCurrency && record.originalAmount && record.exchangeRate && record.rateSource
+      ? {
+          currency: record.originalCurrency,
+          amount: record.originalAmount,
+          exchangeRate: record.exchangeRate,
+          rateSource: record.rateSource,
+          rateDate: record.rateDate,
+          rateTable: record.rateTable,
+        }
+      : null,
   paidBy: toPerson(record.payer),
   shares: record.shares
     .toSorted((a, b) => a.userId.localeCompare(b.userId))
@@ -88,6 +102,121 @@ const getExpenseOrThrow = async (id: string, tripId: string) => {
     throw new ApiError(404, "expense_not_found", "Expense not found");
   }
   return current;
+};
+
+type AmountInput = {
+  amount: number;
+  currency: string;
+  date: string;
+  exchangeRate: number | null;
+};
+
+type RateInfo = {
+  exchangeRate: number;
+  rateSource: "nbp" | "custom";
+  rateDate: string | null;
+  rateTable: "A" | "B" | "A/B" | null;
+};
+
+const inTripCurrency = (amount: number) => ({
+  amount,
+  originalCurrency: null,
+  originalAmount: null,
+  exchangeRate: null,
+  rateSource: null,
+  rateDate: null,
+  rateTable: null,
+});
+
+// Converts a foreign amount at the given rate and returns the expense columns to store
+const convertAtRate = (tripCurrency: string, amount: number, currency: string, rate: RateInfo) => {
+  const converted = convertAmount(amount, currency, tripCurrency, rate.exchangeRate);
+  if (converted <= 0) {
+    throw new ApiError(400, "amount_too_small", "The converted amount must be positive");
+  }
+  if (converted > MAX_AMOUNT) {
+    throw new ApiError(400, "amount_too_large", "The converted amount is too large");
+  }
+  return { amount: converted, originalCurrency: currency, originalAmount: amount, ...rate };
+};
+
+// Converts the entered amount to the trip's currency and returns the expense columns to store
+const resolveAmount = async (tripCurrency: string, input: AmountInput) => {
+  if (input.currency === tripCurrency) {
+    return inTripCurrency(input.amount);
+  }
+  if (input.exchangeRate !== null) {
+    return convertAtRate(tripCurrency, input.amount, input.currency, {
+      exchangeRate: input.exchangeRate,
+      rateSource: "custom",
+      rateDate: null,
+      rateTable: null,
+    });
+  }
+  const nbp = await getExchangeRate(input.currency, tripCurrency, input.date);
+  return convertAtRate(tripCurrency, input.amount, input.currency, {
+    exchangeRate: nbp.rate,
+    rateSource: "nbp",
+    rateDate: nbp.effectiveDate,
+    rateTable: nbp.table,
+  });
+};
+
+// Returns the money columns after an edit, or null when they stay as stored. Values are
+// compared rather than checking which fields were sent, because clients send the whole form.
+const resolveUpdatedAmount = async (
+  tripCurrency: string,
+  current: ExpenseRecord,
+  patch: { amount?: number; currency?: string; exchangeRate?: number | null; date?: string },
+) => {
+  // Clients from before foreign currencies send `amount` in the trip currency without `currency`
+  if (patch.amount !== undefined && patch.currency === undefined) {
+    if (patch.amount !== current.amount) {
+      return inTripCurrency(patch.amount);
+    }
+    patch = { ...patch, amount: undefined };
+  }
+  const storedCurrency = current.originalCurrency ?? tripCurrency;
+  const storedAmount = current.originalAmount ?? current.amount;
+  const currency = patch.currency ?? storedCurrency;
+  const amount = patch.amount ?? storedAmount;
+  const date = patch.date ?? current.date;
+
+  if (currency === tripCurrency) {
+    return current.originalCurrency === null && amount === current.amount
+      ? null
+      : inTripCurrency(amount);
+  }
+  const sameCurrency = currency === current.originalCurrency;
+  const customRate =
+    patch.exchangeRate !== undefined
+      ? patch.exchangeRate
+      : sameCurrency && current.rateSource === "custom"
+        ? current.exchangeRate
+        : null;
+
+  if (customRate !== null) {
+    const unchanged =
+      sameCurrency &&
+      current.rateSource === "custom" &&
+      current.exchangeRate === customRate &&
+      amount === storedAmount;
+    return unchanged
+      ? null
+      : resolveAmount(tripCurrency, { amount, currency, date, exchangeRate: customRate });
+  }
+  // Keep the stored NBP rate while the day stays the same, so a newer table doesn't reprice it
+  if (sameCurrency && current.rateSource === "nbp" && date === current.date) {
+    return amount === storedAmount
+      ? null
+      : convertAtRate(tripCurrency, amount, currency, {
+          exchangeRate: current.exchangeRate!,
+          rateSource: "nbp",
+          rateDate: current.rateDate,
+          rateTable: current.rateTable,
+        });
+  }
+  return resolveAmount(tripCurrency, { amount, currency, date, exchangeRate: null });
 };
 
 const buildSettlement = async (record: MemberTrip, viewerId: string) => {
@@ -145,6 +274,19 @@ export const expenses = new Hono<AppEnv>()
     });
     return c.json({ expenses: records.map(toExpenseResponse) });
   })
+  .get(
+    "/:id/exchange-rate",
+    validate("param", tripIdParamSchema),
+    validate("query", exchangeRateQuerySchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const { currency, date } = c.req.valid("query");
+      const record = await getMemberTrip(id, c.get("user").id);
+      const today = new Date().toISOString().slice(0, 10);
+      const rate = await getExchangeRate(currency, record.currency, date ?? today);
+      return c.json({ from: currency, to: record.currency, ...rate });
+    },
+  )
   .post(
     "/:id/expenses",
     validate("param", tripIdParamSchema),
@@ -152,15 +294,22 @@ export const expenses = new Hono<AppEnv>()
     async (c) => {
       const { id } = c.req.valid("param");
       const userId = c.get("user").id;
-      const { participants, ...fields } = c.req.valid("json");
-      assertMembers(await getMemberTrip(id, userId), [fields.paidBy, ...participants]);
+      const { participants, currency, exchangeRate, amount, ...fields } = c.req.valid("json");
+      const record = await getMemberTrip(id, userId);
+      assertMembers(record, [fields.paidBy, ...participants]);
+      const money = await resolveAmount(record.currency, {
+        amount,
+        currency: currency ?? record.currency,
+        date: fields.date,
+        exchangeRate: exchangeRate ?? null,
+      });
       const expenseId = await db.transaction(async (tx) => {
         const [created] = await tx
           .insert(expense)
-          .values({ ...fields, tripId: id, createdBy: userId })
+          .values({ ...fields, ...money, tripId: id, createdBy: userId })
           .returning({ id: expense.id });
         await tx.insert(expenseShare).values(
-          splitEvenly(fields.amount, participants).map((share) => ({
+          splitEvenly(money.amount, participants).map((share) => ({
             ...share,
             expenseId: created!.id,
           })),
@@ -177,22 +326,29 @@ export const expenses = new Hono<AppEnv>()
     async (c) => {
       const { id, expenseId } = c.req.valid("param");
       const userId = c.get("user").id;
-      const { participants, ...fields } = c.req.valid("json");
+      const { participants, currency, exchangeRate, amount, ...fields } = c.req.valid("json");
       const record = await getMemberTrip(id, userId);
       const current = await getExpenseOrThrow(expenseId, id);
       assertCanEditExpense(record, userId, current);
       assertMembers(record, [...(fields.paidBy ? [fields.paidBy] : []), ...(participants ?? [])]);
 
+      const money = await resolveUpdatedAmount(record.currency, current, {
+        amount,
+        currency,
+        exchangeRate,
+        date: fields.date,
+      });
+      const changes = { ...fields, ...money };
       const shares =
-        participants || fields.amount
+        participants || (money && money.amount !== current.amount)
           ? splitEvenly(
-              fields.amount ?? current.amount,
+              money?.amount ?? current.amount,
               participants ?? current.shares.map((share) => share.userId),
             )
           : null;
       await db.transaction(async (tx) => {
-        if (Object.keys(fields).length > 0) {
-          await tx.update(expense).set(fields).where(eq(expense.id, expenseId));
+        if (Object.keys(changes).length > 0) {
+          await tx.update(expense).set(changes).where(eq(expense.id, expenseId));
         }
         if (shares) {
           await tx.delete(expenseShare).where(eq(expenseShare.expenseId, expenseId));
