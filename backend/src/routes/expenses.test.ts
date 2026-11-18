@@ -414,6 +414,59 @@ describe("foreign currency expenses", () => {
     expect(status).toBe(400);
   });
 
+  test("converts expenses and payments when the trip currency changes", async () => {
+    const { kuba, ola, id } = await setup();
+    const { body: local } = await addForeign(kuba, id, { participants: [kuba.id, ola.id] });
+    const { body: foreign } = await addForeign(kuba, id, { amount: 10000, currency: "USD" });
+    await request(`/trips/${id}/settlement/payments`, kuba, {
+      method: "POST",
+      body: { fromUserId: ola.id, toUserId: kuba.id, amount: 4500 },
+    });
+    const changeCurrency = async (currency: string) => {
+      const response = await request(`/trips/${id}`, kuba, { method: "PATCH", body: { currency } });
+      expect(response.status).toBe(200);
+      const listed = await request(`/trips/${id}/expenses`, kuba);
+      const { expenses } = (await listed.json()) as {
+        expenses: (ExpenseResponse & { id: string })[];
+      };
+      return {
+        local: expenses.find((expense) => expense.id === local.id)!,
+        foreign: expenses.find((expense) => expense.id === foreign.id)!,
+        payments: (await getSettlement(kuba, id)).payments,
+      };
+    };
+
+    const inPln = await changeCurrency("PLN");
+    expect(inPln.local.amount).toBe(38250);
+    expect(inPln.local.shares.map((share) => share.amount)).toEqual([19125, 19125]);
+    expect(inPln.local.original).toMatchObject({
+      currency: "EUR",
+      amount: 9000,
+      rateSource: "nbp",
+    });
+    expect(inPln.foreign.amount).toBe(40000);
+    expect(inPln.foreign.original).toMatchObject({ currency: "USD", amount: 10000 });
+    expect(inPln.payments.map((payment) => payment.amount)).toEqual([19125]);
+
+    const backInEur = await changeCurrency("EUR");
+    expect(backInEur.local.amount).toBe(9000);
+    expect(backInEur.local.original).toBeNull();
+    expect(backInEur.foreign.amount).toBe(9412);
+    expect(backInEur.payments.map((payment) => payment.amount)).toEqual([4500]);
+  });
+
+  test("leaves the trip untouched when a rate is unavailable", async () => {
+    const { kuba, id } = await setup();
+    await addForeign(kuba, id, {});
+    const response = await request(`/trips/${id}`, kuba, {
+      method: "PATCH",
+      body: { currency: "XAU" },
+    });
+    expect(response.status).toBe(422);
+    const trip = (await (await request(`/trips/${id}`, kuba)).json()) as { currency: string };
+    expect(trip.currency).toBe("EUR");
+  });
+
   test("returns the rate for a day", async () => {
     const { kuba, id } = await setup();
     const response = await request(`/trips/${id}/exchange-rate?currency=usd&date=2026-05-10`, kuba);
