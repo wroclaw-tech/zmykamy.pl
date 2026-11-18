@@ -1,5 +1,15 @@
-import { relations } from "drizzle-orm";
-import { date, index, pgTable, text, time, timestamp, uuid } from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
+import {
+  check,
+  date,
+  doublePrecision,
+  index,
+  pgTable,
+  text,
+  time,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { user } from "./auth";
 import { trip } from "./trips";
 
@@ -45,6 +55,8 @@ export const planPoint = pgTable(
     title: text("title").notNull(),
     description: text("description"),
     place: text("place"),
+    latitude: doublePrecision("latitude"),
+    longitude: doublePrecision("longitude"),
     icon: text("icon", { enum: PLAN_ICONS }).notNull().default("location_on"),
     createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -53,7 +65,13 @@ export const planPoint = pgTable(
       .$onUpdate(() => new Date())
       .notNull(),
   },
-  (table) => [index("plan_point_tripId_date_idx").on(table.tripId, table.date)],
+  (table) => [
+    check(
+      "plan_point_coordinates_check",
+      sql`(${table.latitude} IS NULL) = (${table.longitude} IS NULL)`,
+    ),
+    index("plan_point_tripId_date_idx").on(table.tripId, table.date),
+  ],
 );
 
 export const tripInfo = pgTable(

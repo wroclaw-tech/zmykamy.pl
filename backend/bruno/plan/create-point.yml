@@ -15,6 +15,8 @@ http:
         "title": "Pociąg do Sintry",
         "description": "Dworzec Rossio, ok. 40 min",
         "place": "Rossio",
+        "latitude": 38.7139,
+        "longitude": -9.1394,
         "icon": "train"
       }
   auth: inherit
@@ -41,4 +43,5 @@ docs: |-
   - `time`: HH:MM, wall-clock time at the destination
   - `title`: 1-120 characters
   - `description`, `place`: optional, null to leave empty
+  - `latitude`, `longitude`: optional coordinates of the place, set both or neither; used for weather and navigation
   - `icon`: one of the plan icons, defaults to `location_on`

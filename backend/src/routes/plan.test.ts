@@ -87,6 +87,53 @@ describe("plan points", () => {
       icon: "location_on",
       description: null,
       place: null,
+      latitude: null,
+      longitude: null,
+    });
+  });
+
+  test("stores and clears the place coordinates", async () => {
+    const { kuba, id } = await setup();
+    const point = await addPoint(kuba, id, {
+      ...train,
+      place: "Rossio",
+      latitude: 38.7139,
+      longitude: -9.1394,
+    });
+    expect(point).toMatchObject({ latitude: 38.7139, longitude: -9.1394 });
+
+    const cleared = await request(`/trips/${id}/plan/points/${point.id}`, kuba, {
+      method: "PATCH",
+      body: { latitude: null, longitude: null },
+    });
+    expect(await cleared.json()).toMatchObject({
+      place: "Rossio",
+      latitude: null,
+      longitude: null,
+    });
+  });
+
+  test("keeps fields that a partial update leaves out", async () => {
+    const { kuba, id } = await setup();
+    const point = await addPoint(kuba, id, {
+      ...train,
+      description: "Dworzec Rossio",
+      place: "Rossio",
+      latitude: 38.7139,
+      longitude: -9.1394,
+    });
+
+    const response = await request(`/trips/${id}/plan/points/${point.id}`, kuba, {
+      method: "PATCH",
+      body: { title: "Pociąg IC" },
+    });
+
+    expect(await response.json()).toMatchObject({
+      title: "Pociąg IC",
+      description: "Dworzec Rossio",
+      place: "Rossio",
+      latitude: 38.7139,
+      icon: "train",
     });
   });
 
@@ -97,13 +144,15 @@ describe("plan points", () => {
       { ...train, time: "25:00" },
       { ...train, icon: "rocket" },
       { ...train, date: "14.05.2027" },
+      { ...train, latitude: 38.71 },
+      { ...train, latitude: 91, longitude: 0 },
     ];
 
     const responses = await Promise.all(
       bodies.map((body) => request(`/trips/${id}/plan/points`, kuba, { method: "POST", body })),
     );
 
-    expect(responses.map((response) => response.status)).toEqual([400, 400, 400, 400]);
+    expect(responses.map((response) => response.status)).toEqual([400, 400, 400, 400, 400, 400]);
   });
 
   test("rejects dates outside the trip", async () => {
