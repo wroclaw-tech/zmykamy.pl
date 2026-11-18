@@ -6,6 +6,7 @@ final class TripsStore {
     private(set) var trips: [Trip] = []
     private(set) var hasLoaded = false
     private(set) var progress: [Trip.ID: TripProgress] = [:]
+    private(set) var pendingEmailInvites: [PendingEmailInvite] = []
 
     let api: AuthorizedAPI
     private let client: APIClient
@@ -108,6 +109,36 @@ final class TripsStore {
         }
     }
 
+    func emailInvites(for trip: Trip) async throws(APIError) -> [EmailInvite] {
+        try await call { (client, token) throws(APIError) in
+            try await client.send("GET", "trips/\(trip.id)/email-invites", token: token)
+        }
+    }
+
+    func sendEmailInvites(to emails: [String], for trip: Trip) async throws(APIError) -> EmailInviteResult {
+        try await call { (client, token) throws(APIError) in
+            try await client.send("POST", "trips/\(trip.id)/email-invites", body: EmailInviteRequest(emails: emails), token: token)
+        }
+    }
+
+    func resend(_ invite: EmailInvite, for trip: Trip) async throws(APIError) -> EmailInvite {
+        try await call { (client, token) throws(APIError) in
+            try await client.send("POST", "trips/\(trip.id)/email-invites/\(invite.id)/resend", token: token)
+        }
+    }
+
+    func cancel(_ invite: EmailInvite, for trip: Trip) async throws(APIError) {
+        try await call { (client, token) throws(APIError) in
+            try await client.send("DELETE", "trips/\(trip.id)/email-invites/\(invite.id)", token: token)
+        }
+    }
+
+    func loadPendingEmailInvites() async throws(APIError) {
+        pendingEmailInvites = try await call { (client, token) throws(APIError) in
+            try await client.send("GET", "email-invites", token: token)
+        }
+    }
+
     func remove(_ member: TripMember, from trip: Trip) async throws(APIError) {
         try await call { (client, token) throws(APIError) in
             try await client.send("DELETE", "trips/\(trip.id)/members/\(member.userId)", token: token)
@@ -138,6 +169,7 @@ final class TripsStore {
         } else {
             trips.append(joined)
         }
+        pendingEmailInvites.removeAll { $0.trip.id == joined.id }
         return joined
     }
 

@@ -38,6 +38,9 @@ nonisolated enum APIError: LocalizedError, Equatable, Sendable {
         case .server(_, "plan_points_out_of_range"): "Przenieś albo usuń punkty planu spoza nowych dat wyjazdu."
         case .server(_, "unsupported_currency"): "NBP nie publikuje kursu tej waluty. Wpisz własny kurs."
         case .server(_, "amount_too_large"): "Kwota po przeliczeniu jest za duża."
+        case .server(_, "rate_limited"): "Za dużo prób w krótkim czasie. Spróbuj ponownie później."
+        case .server(_, "email_invite_joined"): "Ta osoba już dołączyła do wyjazdu."
+        case .server(_, "email_not_sent"): "Nie udało się wysłać e-maila. Spróbuj ponownie za chwilę."
         case .server(_, "rate_unavailable"): "Nie udało się pobrać kursu NBP. Spróbuj ponownie lub wpisz własny kurs."
         case .server: "Coś poszło nie tak. Spróbuj ponownie za chwilę."
         }
