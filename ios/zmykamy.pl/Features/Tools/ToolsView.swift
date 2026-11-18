@@ -49,7 +49,7 @@ struct ToolsView: View {
         .refreshRatesOnReconnect {
             rate = try? await expenses.rates.quote(from: referenceCurrency, to: "PLN", on: LocalDate(.now, calendar: user.calendar), in: trip, allowStale: true)
         }
-        .task(id: trip.id) {
+        .task(id: [trip.id, trip.currency]) {
             try? await trips.loadProgress(of: trip)
             try? await documents.load(trip)
             try? await expenses.loadSettlement(trip)

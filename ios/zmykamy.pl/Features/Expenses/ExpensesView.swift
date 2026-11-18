@@ -44,7 +44,7 @@ struct ExpensesView: View {
                     Text(loadError ?? "")
                 }
         }
-        .task(id: trip.id) { await load() }
+        .task(id: [trip.id, trip.currency]) { await load() }
     }
 
     @ViewBuilder
