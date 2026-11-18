@@ -6,6 +6,7 @@ import { handleError, handleNotFound } from "./lib/errors";
 import { logger } from "./lib/logger";
 import { rateLimit } from "./middleware/rate-limit";
 import { documents } from "./routes/documents";
+import { emailInvites, myEmailInvites } from "./routes/email-invites";
 import { expenses } from "./routes/expenses";
 import { invites } from "./routes/invites";
 import { gallery } from "./routes/media";
@@ -35,7 +36,9 @@ app.route("/trips", documents);
 app.route("/trips", packing);
 app.route("/trips", tasks);
 app.route("/trips", polls);
+app.route("/trips", emailInvites);
 app.route("/invites", invites);
+app.route("/email-invites", myEmailInvites);
 app.route("/", universalLinks);
 
 export default app;

@@ -10,6 +10,9 @@ struct TeamView: View {
     @State private var isConfirmingRegenerate = false
     @State private var isConfirmingLeave = false
     @State private var memberToRemove: TripMember?
+    @State private var emailInvites: [EmailInvite] = []
+    @State private var resendingInviteID: EmailInvite.ID?
+    @State private var inviteToCancel: EmailInvite?
     @State private var isWorking = false
     @State private var errorMessage = ""
     @State private var isShowingError = false
@@ -29,7 +32,14 @@ struct TeamView: View {
                     onRegenerate: { isConfirmingRegenerate = true },
                     onRetry: { Task { await loadInvite() } }
                 )
-                .padding(.bottom, Spacing.s16)
+                .padding(.bottom, trip.isOrganizer ? 0 : Spacing.s16)
+
+                if trip.isOrganizer {
+                    EmailInviteCard { (emails) throws(APIError) in
+                        try await sendEmailInvites(to: emails)
+                    }
+                    .padding(.bottom, Spacing.s16)
+                }
 
                 membersHeader
                 ListCard {
@@ -40,6 +50,21 @@ struct TeamView: View {
                                     Button("Usuń z wyjazdu", role: .destructive) { memberToRemove = member }
                                 }
                             }
+                    }
+                }
+
+                if trip.isOrganizer && !emailInvites.isEmpty {
+                    SectionLabel(text: "ZAPROSZENI · \(emailInvites.count)")
+                        .padding(.top, Spacing.s16)
+                    ListCard {
+                        ForEach(emailInvites) { invite in
+                            EmailInviteRow(invite: invite, isResending: resendingInviteID == invite.id) {
+                                resend(invite)
+                            }
+                            .contextMenu {
+                                Button("Anuluj zaproszenie", role: .destructive) { inviteToCancel = invite }
+                            }
+                        }
                     }
                 }
 
@@ -76,6 +101,7 @@ struct TeamView: View {
             }
         }
         .task(id: trip.id) { await loadInvite() }
+        .task(id: trip.id) { await loadEmailInvites() }
         .sheet(isPresented: $isShowingQR) {
             if let invite {
                 InviteQRSheet(tripName: trip.name, invite: invite)
@@ -101,6 +127,16 @@ struct TeamView: View {
         } message: { member in
             Text("\(member.name) straci dostęp do wyjazdu.")
         }
+        .confirmationDialog(
+            "Anulować zaproszenie?",
+            isPresented: Binding(get: { inviteToCancel != nil }, set: { if !$0 { inviteToCancel = nil } }),
+            titleVisibility: .visible,
+            presenting: inviteToCancel
+        ) { invite in
+            Button("Anuluj zaproszenie", role: .destructive) { cancel(invite) }
+        } message: { invite in
+            Text("Link z e-maila do \(invite.email) nadal będzie działać, dopóki nie wygenerujesz nowego.")
+        }
         .alert("Coś poszło nie tak", isPresented: $isShowingError) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -125,6 +161,38 @@ struct TeamView: View {
             inviteState = .loaded(try await trips.invite(for: trip))
         } catch {
             inviteState = .failed
+        }
+    }
+
+    private func loadEmailInvites() async {
+        guard trip.isOrganizer else { return }
+        do throws(APIError) {
+            emailInvites = try await trips.emailInvites(for: trip)
+        } catch {
+            emailInvites = []
+        }
+    }
+
+    private func sendEmailInvites(to emails: [String]) async throws(APIError) -> EmailInviteResult {
+        let result = try await trips.sendEmailInvites(to: emails, for: trip)
+        let sentIDs = Set(result.invites.map(\.id))
+        emailInvites = result.invites + emailInvites.filter { !sentIDs.contains($0.id) }
+        return result
+    }
+
+    private func resend(_ invite: EmailInvite) {
+        resendingInviteID = invite.id
+        perform { () throws(APIError) in
+            defer { resendingInviteID = nil }
+            let resent = try await trips.resend(invite, for: trip)
+            emailInvites = [resent] + emailInvites.filter { $0.id != resent.id }
+        }
+    }
+
+    private func cancel(_ invite: EmailInvite) {
+        perform { () throws(APIError) in
+            try await trips.cancel(invite, for: trip)
+            emailInvites.removeAll { $0.id == invite.id }
         }
     }
 

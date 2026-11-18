@@ -18,6 +18,8 @@ export const RATE_LIMITS = {
   invitePreview: { limit: 60, windowMs: MINUTE },
   inviteJoin: { limit: 20, windowMs: 15 * MINUTE },
   upload: { limit: 300, windowMs: HOUR },
+  emailInviteTrip: { limit: 30, windowMs: 24 * HOUR },
+  emailInviteUser: { limit: 50, windowMs: 24 * HOUR },
 } satisfies Record<string, RateLimit>;
 
 const CLEANUP_PROBABILITY = 0.01;

@@ -269,7 +269,7 @@ struct HomeView: View {
         } else {
             let today = LocalDate(.now)
             let sections = TripSections(trips: trips.trips, today: today)
-            if sections.isEmpty {
+            if sections.isEmpty && trips.pendingEmailInvites.isEmpty {
                 ContentUnavailableView {
                     Label("Nie masz jeszcze wyjazdów", image: .flightTakeoff)
                 } description: {
@@ -289,6 +289,19 @@ struct HomeView: View {
     private func list(_ sections: TripSections, today: LocalDate) -> some View {
         ScrollView {
             VStack(spacing: Spacing.s8) {
+                if !trips.pendingEmailInvites.isEmpty {
+                    SectionLabel(text: "ZAPROSZENIA")
+                    ListCard {
+                        ForEach(trips.pendingEmailInvites) { invite in
+                            Button { inviteRouter.open(code: invite.code) } label: {
+                                PendingInviteRow(invite: invite)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.bottom, Spacing.s16)
+                }
+
                 if let featured = sections.featured {
                     SectionLabel(text: "NAJBLIŻSZY")
                     Button { openTrip = featured } label: {
@@ -349,11 +362,13 @@ struct HomeView: View {
         } catch {
             loadError = error.localizedDescription
         }
+        try? await trips.loadPendingEmailInvites()
     }
 
     private func refresh() async {
         do throws(APIError) {
             try await trips.load()
+            try? await trips.loadPendingEmailInvites()
         } catch {
             loadError = error.localizedDescription
             isShowingRefreshError = true

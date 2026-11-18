@@ -48,12 +48,15 @@ type TripWithMembers = NonNullable<Awaited<ReturnType<typeof findTrip>>>;
 const getInviteLabel = (record: { name: string; destinationName: string | null }) =>
   record.destinationName ?? record.name;
 
-const toInviteResponse = (record: TripWithMembers, code: string) => ({
+export const toInviteResponse = (
+  record: { name: string; destinationName: string | null },
+  code: string,
+) => ({
   code: toInviteSlug(getInviteLabel(record), code),
   url: toInviteUrl(getInviteLabel(record), code),
 });
 
-const getOrCreateInviteCode = async (tripId: string) => {
+export const getOrCreateInviteCode = async (tripId: string) => {
   await db.insert(tripInvite).values({ tripId, code: generateInviteCode() }).onConflictDoNothing();
   const invite = await db.query.tripInvite.findFirst({ where: eq(tripInvite.tripId, tripId) });
   return invite!.code;
@@ -143,7 +146,7 @@ const removeTripMember = (tripId: string, userId: string) =>
       .where(and(eq(pollVote.userId, userId), inArray(pollVote.pollId, unresolvedPollIds)));
   });
 
-const getOrganizerTrip = async (id: string, userId: string) => {
+export const getOrganizerTrip = async (id: string, userId: string) => {
   const record = await getMemberTrip(id, userId);
   const role = record.members.find((member) => member.userId === userId)?.role;
   if (role !== "organizer") {
