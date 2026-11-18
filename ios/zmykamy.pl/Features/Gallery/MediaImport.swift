@@ -13,6 +13,8 @@ nonisolated struct PreparedMedia: Sendable {
     let height: Int
     let durationSeconds: Double?
     let takenAt: Date
+    var source: MediaSource?
+    var externalId: String?
 }
 
 nonisolated struct PickedMovie: Transferable {
@@ -35,9 +37,9 @@ nonisolated enum MediaImport {
     private static let thumbnailDimension: CGFloat = 640
 
     @concurrent
-    static func photo(from data: Data) async -> PreparedMedia? {
+    static func photo(from data: Data, takenAt fallback: Date? = nil) async -> PreparedMedia? {
         guard let image = UIImage(data: data) else { return nil }
-        return photo(image, takenAt: exifDate(in: data) ?? .now)
+        return photo(image, takenAt: exifDate(in: data) ?? fallback ?? .now)
     }
 
     @concurrent
@@ -46,7 +48,7 @@ nonisolated enum MediaImport {
     }
 
     @concurrent
-    static func video(at url: URL) async -> PreparedMedia? {
+    static func video(at url: URL, takenAt fallback: Date? = nil) async -> PreparedMedia? {
         let asset = AVURLAsset(url: url)
         guard let track = try? await asset.loadTracks(withMediaType: .video).first,
               let (naturalSize, transform) = try? await track.load(.naturalSize, .preferredTransform) else {
@@ -73,7 +75,7 @@ nonisolated enum MediaImport {
             width: Int(abs(size.width)),
             height: Int(abs(size.height)),
             durationSeconds: duration.flatMap { $0.isFinite ? $0 : nil },
-            takenAt: creationDate ?? .now
+            takenAt: creationDate ?? fallback ?? .now
         )
     }
 

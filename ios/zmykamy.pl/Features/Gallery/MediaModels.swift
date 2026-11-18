@@ -5,6 +5,10 @@ nonisolated enum MediaKind: String, Codable, Sendable {
     case video
 }
 
+nonisolated enum MediaSource: String, Codable, Sendable {
+    case googlePhotos = "google_photos"
+}
+
 nonisolated struct MediaItem: Decodable, Equatable, Identifiable, Sendable {
     let id: String
     let kind: MediaKind
@@ -16,9 +20,11 @@ nonisolated struct MediaItem: Decodable, Equatable, Identifiable, Sendable {
     let durationSeconds: Double?
     let takenAt: Date
     let uploadedBy: ExpensePerson?
+    let source: MediaSource?
+    let externalId: String?
 
     private enum CodingKeys: String, CodingKey {
-        case id, kind, url, thumbnailUrl, contentType, width, height, durationSeconds, takenAt, uploadedBy
+        case id, kind, url, thumbnailUrl, contentType, width, height, durationSeconds, takenAt, uploadedBy, source, externalId
     }
 
     init(
@@ -31,7 +37,9 @@ nonisolated struct MediaItem: Decodable, Equatable, Identifiable, Sendable {
         height: Int,
         durationSeconds: Double?,
         takenAt: Date,
-        uploadedBy: ExpensePerson?
+        uploadedBy: ExpensePerson?,
+        source: MediaSource? = nil,
+        externalId: String? = nil
     ) {
         self.id = id
         self.kind = kind
@@ -43,6 +51,8 @@ nonisolated struct MediaItem: Decodable, Equatable, Identifiable, Sendable {
         self.durationSeconds = durationSeconds
         self.takenAt = takenAt
         self.uploadedBy = uploadedBy
+        self.source = source
+        self.externalId = externalId
     }
 
     init(from decoder: Decoder) throws {
@@ -56,6 +66,8 @@ nonisolated struct MediaItem: Decodable, Equatable, Identifiable, Sendable {
         height = try container.decode(Int.self, forKey: .height)
         durationSeconds = try container.decodeIfPresent(Double.self, forKey: .durationSeconds)
         uploadedBy = try container.decodeIfPresent(ExpensePerson.self, forKey: .uploadedBy)
+        source = try? container.decodeIfPresent(MediaSource.self, forKey: .source)
+        externalId = try container.decodeIfPresent(String.self, forKey: .externalId)
         let raw = try container.decode(String.self, forKey: .takenAt)
         guard let date = ISODateTime.date(from: raw) else {
             throw DecodingError.dataCorruptedError(forKey: .takenAt, in: container, debugDescription: "Invalid date: \(raw)")
@@ -105,6 +117,8 @@ nonisolated struct MediaCreateRequest: Encodable, Sendable {
     let height: Int
     let durationSeconds: Double?
     let takenAt: String
+    let source: MediaSource?
+    let externalId: String?
 }
 
 nonisolated enum ISODateTime {

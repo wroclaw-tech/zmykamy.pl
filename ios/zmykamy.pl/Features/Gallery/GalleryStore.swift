@@ -29,6 +29,12 @@ final class GalleryStore {
         uploads.filter { $0.tripID == trip.id }
     }
 
+    func externalIDs(from source: MediaSource, in trip: Trip) -> Set<String> {
+        let imported = (items[trip.id] ?? []).filter { $0.source == source }.compactMap(\.externalId)
+        let pending = uploads(for: trip).filter { $0.media.source == source }.compactMap(\.media.externalId)
+        return Set(imported + pending)
+    }
+
     func load(_ trip: Trip) async throws(APIError) {
         let list: MediaList = try await api.call { (client, token) throws(APIError) in
             try await client.send("GET", "trips/\(trip.id)/media", token: token)
@@ -93,13 +99,17 @@ final class GalleryStore {
                 width: media.width,
                 height: media.height,
                 durationSeconds: media.durationSeconds,
-                takenAt: ISODateTime.string(from: media.takenAt)
+                takenAt: ISODateTime.string(from: media.takenAt),
+                source: media.source,
+                externalId: media.externalId
             )
             let created: MediaItem = try await api.call { (client, token) throws(APIError) in
                 try await client.send("POST", "trips/\(upload.tripID)/media", body: request, token: token)
             }
             items[upload.tripID, default: []].append(created)
             items[upload.tripID]?.sort { $0.takenAt > $1.takenAt }
+            discard(upload)
+        } catch .server(_, "media_already_imported") {
             discard(upload)
         } catch {
             guard let index = uploads.firstIndex(where: { $0.id == upload.id }) else { return }

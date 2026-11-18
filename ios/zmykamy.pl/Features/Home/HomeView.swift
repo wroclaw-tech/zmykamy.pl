@@ -162,6 +162,7 @@ struct HomeView: View {
     @State private var plans: PlanStore
     @State private var expenses: ExpensesStore
     @State private var gallery: GalleryStore
+    @State private var googlePhotos = GooglePhotosImporter()
     @State private var documents: DocumentsStore
     @State private var packing: PackingStore
     @State private var tasks: TasksStore
@@ -243,6 +244,7 @@ struct HomeView: View {
         .environment(plans)
         .environment(expenses)
         .environment(gallery)
+        .environment(googlePhotos)
         .environment(documents)
         .environment(packing)
         .environment(tasks)

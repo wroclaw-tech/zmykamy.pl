@@ -7,3 +7,4 @@ build/
 *.dSYM
 .swiftpm/
 .build/
+Config/Local.xcconfig
