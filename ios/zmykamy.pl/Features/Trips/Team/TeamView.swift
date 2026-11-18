@@ -104,7 +104,7 @@ struct TeamView: View {
         .task(id: trip.id) { await loadEmailInvites() }
         .sheet(isPresented: $isShowingQR) {
             if let invite {
-                InviteQRSheet(tripName: trip.name, invite: invite)
+                InviteQRSheet(trip: trip, invite: invite)
             }
         }
         .confirmationDialog("Wygenerować nowy link?", isPresented: $isConfirmingRegenerate, titleVisibility: .visible) {
